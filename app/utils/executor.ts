@@ -1,11 +1,3 @@
-function createFrameworkBadge(framework: string, color: string): string {
-  return `
-    <div style="position: fixed; top: 10px; right: 10px; background: ${color}; color: white; padding: 6px 12px; border-radius: 6px; font-family: system-ui; font-size: 12px; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 9999;">
-      ${framework}
-    </div>
-  `;
-}
-
 export function executeVanillaJS(code: string): string {
   return `
 <!DOCTYPE html>
@@ -19,7 +11,6 @@ export function executeVanillaJS(code: string): string {
   </style>
 </head>
 <body>
-  ${createFrameworkBadge('Vanilla JS', '#eab308')}
   <div id="app"></div>
   <script>
     try {
@@ -49,7 +40,6 @@ export function executeReact(code: string): string {
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body>
-  ${createFrameworkBadge('React', '#3b82f6')}
   <div id="app"></div>
   <script type="text/babel">
     try {
@@ -77,7 +67,6 @@ export function executeVue(code: string): string {
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
 </head>
 <body>
-  ${createFrameworkBadge('Vue 3', '#10b981')}
   <div id="app"></div>
   <script>
     try {
@@ -114,7 +103,6 @@ export function executeSvelte(code: string): string {
   </script>
 </head>
 <body>
-  ${createFrameworkBadge('Svelte', '#f97316')}
   <div id="app"></div>
 
   <script type="module">
@@ -209,7 +197,6 @@ export async function executeAngular(code: string): Promise<string> {
   </style>
 </head>
 <body>
-  ${createFrameworkBadge('Angular', '#dc2626')}
   <div id="app"></div>
 
   <script src="https://unpkg.com/typescript@latest/lib/typescript.js"></script>

@@ -13,6 +13,9 @@ node_modules/
 # Production
 /build
 
+# Claude setting
+./claude
+
 # Misc
 .DS_Store
 *.pem
@@ -32,3 +35,5 @@ yarn-error.log*
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+.vercel
