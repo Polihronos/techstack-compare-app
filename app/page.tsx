@@ -12,6 +12,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Home as HomeIcon,
+  Monitor,
+  Server,
+  Terminal as TerminalIcon,
 } from "lucide-react";
 import { EXAMPLE_CODE } from "./utils/templates";
 import {
@@ -21,6 +24,8 @@ import {
   executeSvelte,
   executeAngular,
 } from "./utils/executor";
+import { BACKEND_TEMPLATES, type BackendFramework } from "./utils/backend-templates";
+import { executeBackend, type TerminalOutput } from "./utils/webcontainer-executor";
 import { Button } from "@/components/ui/button";
 import {
   ResizablePanelGroup,
@@ -33,6 +38,15 @@ const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
   loading: () => (
     <div className="flex items-center justify-center h-full bg-zinc-900 text-white">
       Loading editor...
+    </div>
+  ),
+});
+
+const Terminal = dynamic(() => import("@/components/terminal").then((mod) => ({ default: mod.Terminal })), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-full bg-zinc-900 text-white">
+      Loading terminal...
     </div>
   ),
 });
@@ -91,6 +105,13 @@ const FRAMEWORKS: { value: Framework; label: string; color: string }[] = [
   { value: "angular", label: "Angular", color: "bg-red-500" },
 ];
 
+const BACKEND_FRAMEWORKS: { value: BackendFramework; label: string; color: string }[] = [
+  { value: "express", label: "Express.js", color: "bg-gray-500" },
+  { value: "fastify", label: "Fastify", color: "bg-black" },
+  { value: "nextjs", label: "Next.js API", color: "bg-black" },
+  { value: "sveltekit", label: "SvelteKit", color: "bg-orange-500" },
+];
+
 // Get appropriate language for Monaco editor based on framework
 const getEditorLanguage = (framework: Framework): string => {
   const languageMap: Record<Framework, string> = {
@@ -104,6 +125,10 @@ const getEditorLanguage = (framework: Framework): string => {
 };
 
 export default function Home() {
+  // Mode toggle
+  const [mode, setMode] = useState<"frontend" | "backend">("frontend");
+
+  // Frontend state
   const [selectedFramework, setSelectedFramework] =
     useState<Framework>("vanilla");
   const [code, setCode] = useState<string>(EXAMPLE_CODE.vanilla);
@@ -112,12 +137,34 @@ export default function Home() {
   const [autoRun, setAutoRun] = useState(true);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
+  // Backend state
+  const [selectedBackendFramework, setSelectedBackendFramework] =
+    useState<BackendFramework>("express");
+  const [backendFiles, setBackendFiles] = useState<Record<string, string>>({});
+  const [serverUrl, setServerUrl] = useState<string>("");
+  const [terminalOutputs, setTerminalOutputs] = useState<TerminalOutput[]>([]);
+
   // Load example code when framework changes
   useEffect(() => {
-    setCode(EXAMPLE_CODE[selectedFramework]);
-  }, [selectedFramework]);
+    if (mode === "frontend") {
+      setCode(EXAMPLE_CODE[selectedFramework]);
+    }
+  }, [selectedFramework, mode]);
 
+  // Load backend template when backend framework changes
+  useEffect(() => {
+    if (mode === "backend") {
+      const template = BACKEND_TEMPLATES[selectedBackendFramework];
+      setBackendFiles(template.files);
+      setServerUrl("");
+      setTerminalOutputs([]);
+    }
+  }, [selectedBackendFramework, mode]);
+
+  // Frontend execution (ORIGINAL WORKING CODE)
   const handleRunCode = useCallback(async () => {
+    if (mode === "backend") return; // Skip if backend mode
+
     setIsRunning(true);
     setError("");
 
@@ -157,18 +204,73 @@ export default function Home() {
     } finally {
       setIsRunning(false);
     }
-  }, [selectedFramework, code]);
+  }, [mode, selectedFramework, code]);
 
-  // Auto-run effect with debouncing
+  // Backend execution (manual only via refresh button)
+  const handleRunBackend = useCallback(async () => {
+    setIsRunning(true);
+    setError("");
+    setTerminalOutputs([]);
+    setServerUrl("");
+
+    // Wait for terminal to be ready
+    const waitForTerminal = () => {
+      return new Promise<void>((resolve) => {
+        const checkTerminal = () => {
+          const terminal = (window as any).__terminal;
+          if (terminal?.ready) {
+            terminal.clear();
+            resolve();
+          } else {
+            setTimeout(checkTerminal, 100);
+          }
+        };
+        checkTerminal();
+      });
+    };
+
+    await waitForTerminal();
+
+    try {
+      const result = await executeBackend(backendFiles, (output) => {
+        setTerminalOutputs((prev) => [...prev, output]);
+      });
+
+      if (result.error) {
+        setError(result.error);
+      } else if (result.url) {
+        setServerUrl(result.url);
+      }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : "Backend execution failed";
+      setError(errorMsg);
+    } finally {
+      setIsRunning(false);
+    }
+  }, [backendFiles]);
+
+  // Write terminal outputs
   useEffect(() => {
-    if (!autoRun) return;
+    if (typeof window === 'undefined') return;
+    if (mode === "backend" && terminalOutputs.length > 0) {
+      const latestOutput = terminalOutputs[terminalOutputs.length - 1];
+      const terminal = (window as any).__terminal;
+      if (terminal) {
+        terminal.write(latestOutput.data);
+      }
+    }
+  }, [terminalOutputs, mode]);
+
+  // Auto-run effect with debouncing (ORIGINAL WORKING CODE - frontend only)
+  useEffect(() => {
+    if (mode !== "frontend" || !autoRun) return;
 
     const timeoutId = setTimeout(() => {
       handleRunCode();
-    }, 1000); // 1 second debounce
+    }, 1000);
 
     return () => clearTimeout(timeoutId);
-  }, [code, autoRun, handleRunCode]);
+  }, [code, autoRun, mode, handleRunCode]);
 
   return (
     <div className="flex flex-col h-screen bg-zinc-950">
@@ -184,6 +286,36 @@ export default function Home() {
               Compare and test code across frameworks
             </p>
           </div>
+        </div>
+
+        {/* Mode Toggle */}
+        <div className="flex items-center gap-2 bg-zinc-800 rounded-lg p-1">
+          <Button
+            onClick={() => setMode("frontend")}
+            variant={mode === "frontend" ? "default" : "ghost"}
+            size="sm"
+            className={`h-8 px-3 ${
+              mode === "frontend"
+                ? "bg-blue-600 hover:bg-blue-700"
+                : "text-zinc-400 hover:text-zinc-300 hover:bg-zinc-700"
+            }`}
+          >
+            <Monitor className="w-4 h-4 mr-1.5" />
+            Frontend
+          </Button>
+          <Button
+            onClick={() => setMode("backend")}
+            variant={mode === "backend" ? "default" : "ghost"}
+            size="sm"
+            className={`h-8 px-3 ${
+              mode === "backend"
+                ? "bg-green-600 hover:bg-green-700"
+                : "text-zinc-400 hover:text-zinc-300 hover:bg-zinc-700"
+            }`}
+          >
+            <Server className="w-4 h-4 mr-1.5" />
+            Backend
+          </Button>
         </div>
       </header>
 
@@ -202,33 +334,65 @@ export default function Home() {
 
               {/* Framework Selector Buttons */}
               <div className="flex items-center gap-1">
-                {FRAMEWORKS.map((fw) => (
-                  <Button
-                    key={fw.value}
-                    onClick={() => setSelectedFramework(fw.value)}
-                    variant={
-                      selectedFramework === fw.value ? "default" : "ghost"
-                    }
-                    size="sm"
-                    className={`h-7 px-2 ${
-                      selectedFramework === fw.value
-                        ? "bg-blue-600 hover:bg-blue-700"
-                        : "text-zinc-400 hover:text-zinc-300 hover:bg-zinc-800"
-                    }`}
-                  >
-                    <FrameworkIcon framework={fw.value} />
-                    <span className="ml-1.5 text-xs">{fw.label}</span>
-                  </Button>
-                ))}
+                {mode === "frontend" ? (
+                  FRAMEWORKS.map((fw) => (
+                    <Button
+                      key={fw.value}
+                      onClick={() => setSelectedFramework(fw.value)}
+                      variant={
+                        selectedFramework === fw.value ? "default" : "ghost"
+                      }
+                      size="sm"
+                      className={`h-7 px-2 ${
+                        selectedFramework === fw.value
+                          ? "bg-blue-600 hover:bg-blue-700"
+                          : "text-zinc-400 hover:text-zinc-300 hover:bg-zinc-800"
+                      }`}
+                    >
+                      <FrameworkIcon framework={fw.value} />
+                      <span className="ml-1.5 text-xs">{fw.label}</span>
+                    </Button>
+                  ))
+                ) : (
+                  BACKEND_FRAMEWORKS.map((fw) => (
+                    <Button
+                      key={fw.value}
+                      onClick={() => setSelectedBackendFramework(fw.value)}
+                      variant={
+                        selectedBackendFramework === fw.value ? "default" : "ghost"
+                      }
+                      size="sm"
+                      className={`h-7 px-2 ${
+                        selectedBackendFramework === fw.value
+                          ? "bg-green-600 hover:bg-green-700"
+                          : "text-zinc-400 hover:text-zinc-300 hover:bg-zinc-800"
+                      }`}
+                    >
+                      <Server className="w-3.5 h-3.5" />
+                      <span className="ml-1.5 text-xs">{fw.label}</span>
+                    </Button>
+                  ))
+                )}
               </div>
             </div>
             <div className="flex-1">
               <MonacoEditor
                 height="100%"
-                language={getEditorLanguage(selectedFramework)}
+                language={mode === "frontend" ? getEditorLanguage(selectedFramework) : "javascript"}
                 theme="vs-dark"
-                value={code}
-                onChange={(value) => setCode(value || "")}
+                value={
+                  mode === "frontend"
+                    ? code
+                    : backendFiles['server.js'] || backendFiles[Object.keys(backendFiles)[0]] || ""
+                }
+                onChange={(value) => {
+                  if (mode === "frontend") {
+                    setCode(value || "");
+                  } else {
+                    const mainFile = 'server.js' in backendFiles ? 'server.js' : Object.keys(backendFiles)[0];
+                    setBackendFiles({ ...backendFiles, [mainFile]: value || "" });
+                  }
+                }}
                 options={{
                   minimap: { enabled: false },
                   fontSize: 14,
@@ -249,9 +413,13 @@ export default function Home() {
           <div className="flex flex-col h-full">
             <div className="px-4 py-2 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Play className="w-4 h-4 text-zinc-400" />
+                {mode === "frontend" ? (
+                  <Play className="w-4 h-4 text-zinc-400" />
+                ) : (
+                  <TerminalIcon className="w-4 h-4 text-zinc-400" />
+                )}
                 <h2 className="text-sm font-semibold text-zinc-300">
-                  Live Preview
+                  {mode === "frontend" ? "Live Preview" : "Terminal Output"}
                 </h2>
               </div>
 
@@ -301,7 +469,7 @@ export default function Home() {
                   variant="ghost"
                   size="sm"
                   className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300 hover:bg-zinc-700"
-                  onClick={handleRunCode}
+                  onClick={mode === "frontend" ? handleRunCode : handleRunBackend}
                   disabled={isRunning}
                 >
                   <RotateCw
@@ -314,7 +482,9 @@ export default function Home() {
               <div className="flex-1 bg-zinc-900 rounded-md px-3 py-1.5 flex items-center gap-2 border border-zinc-700">
                 <Lock className="w-3.5 h-3.5 text-green-500" />
                 <span className="text-xs text-zinc-400 font-mono">
-                  https://localhost:3000/preview/{selectedFramework}
+                  {mode === "frontend"
+                    ? `https://localhost:3000/preview/${selectedFramework}`
+                    : serverUrl || `http://localhost:3001 (waiting...)`}
                 </span>
               </div>
 
@@ -329,24 +499,84 @@ export default function Home() {
               </Button>
             </div>
 
-            <div className="flex-1 bg-white relative">
-              {error && (
-                <div className="absolute top-0 left-0 right-0 bg-red-50 border-b border-red-200 px-4 py-3 z-10">
-                  <div className="flex items-start gap-2">
-                    <span className="text-red-600 font-semibold text-sm">
-                      Error:
-                    </span>
-                    <span className="text-red-800 text-sm">{error}</span>
+            {mode === "frontend" ? (
+              <div className="flex-1 bg-white relative">
+                {error && (
+                  <div className="absolute top-0 left-0 right-0 bg-red-50 border-b border-red-200 px-4 py-3 z-10">
+                    <div className="flex items-start gap-2">
+                      <span className="text-red-600 font-semibold text-sm">
+                        Error:
+                      </span>
+                      <span className="text-red-800 text-sm">{error}</span>
+                    </div>
                   </div>
-                </div>
-              )}
-              <iframe
-                ref={iframeRef}
-                title="preview"
-                sandbox="allow-scripts allow-modals allow-forms allow-pointer-lock allow-popups allow-same-origin"
-                className="w-full h-full border-0"
-              />
-            </div>
+                )}
+                <iframe
+                  ref={iframeRef}
+                  title="preview"
+                  sandbox="allow-scripts allow-modals allow-forms allow-pointer-lock allow-popups allow-same-origin"
+                  className="w-full h-full border-0"
+                />
+              </div>
+            ) : (
+              <ResizablePanelGroup direction="vertical" className="flex-1">
+                {/* Server Preview Section */}
+                <ResizablePanel defaultSize={75} minSize={40}>
+                  <div className="h-full bg-zinc-800 relative">
+                    {error && (
+                      <div className="absolute top-0 left-0 right-0 bg-red-900/20 border-b border-red-700 px-4 py-3 z-10">
+                        <div className="flex items-start gap-2">
+                          <span className="text-red-400 font-semibold text-sm">
+                            Error:
+                          </span>
+                          <span className="text-red-300 text-sm">{error}</span>
+                        </div>
+                      </div>
+                    )}
+                    {serverUrl ? (
+                      <iframe
+                        src={serverUrl}
+                        title="Backend Preview"
+                        className="w-full h-full border-0"
+                        sandbox="allow-scripts allow-same-origin allow-forms"
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-zinc-400">
+                        <div className="text-center">
+                          <Server className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                          <p className="text-sm">Server starting...</p>
+                          <p className="text-xs mt-1 opacity-70">Preview will appear here when ready</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </ResizablePanel>
+
+                <ResizableHandle withHandle />
+
+                {/* Terminal Output Section */}
+                <ResizablePanel defaultSize={25} minSize={15}>
+                  <div className="h-full bg-[#1e1e1e] flex flex-col">
+                    {/* Terminal Header */}
+                    <div className="flex items-center justify-between px-3 py-1.5 bg-[#2d2d30] border-b border-[#3e3e42]">
+                      <div className="flex items-center gap-2">
+                        <TerminalIcon className="w-3.5 h-3.5 text-zinc-400" />
+                        <span className="text-xs font-medium text-zinc-300">Terminal</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className="w-3 h-3 rounded-full bg-zinc-600 hover:bg-zinc-500 cursor-pointer" />
+                        <div className="w-3 h-3 rounded-full bg-zinc-600 hover:bg-zinc-500 cursor-pointer" />
+                        <div className="w-3 h-3 rounded-full bg-zinc-600 hover:bg-zinc-500 cursor-pointer" />
+                      </div>
+                    </div>
+                    {/* Terminal Content */}
+                    <div className="flex-1 overflow-hidden">
+                      <Terminal className="w-full h-full" />
+                    </div>
+                  </div>
+                </ResizablePanel>
+              </ResizablePanelGroup>
+            )}
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>
@@ -354,13 +584,26 @@ export default function Home() {
       {/* Status Bar */}
       <footer className="px-6 py-2 bg-zinc-900 border-t border-zinc-800 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <FrameworkIcon framework={selectedFramework} />
-          <span className="text-sm text-zinc-400">
-            {FRAMEWORKS.find((f) => f.value === selectedFramework)?.label}
-          </span>
+          {mode === "frontend" ? (
+            <>
+              <FrameworkIcon framework={selectedFramework} />
+              <span className="text-sm text-zinc-400">
+                {FRAMEWORKS.find((f) => f.value === selectedFramework)?.label}
+              </span>
+            </>
+          ) : (
+            <>
+              <Server className="w-4 h-4 text-green-500" />
+              <span className="text-sm text-zinc-400">
+                {BACKEND_FRAMEWORKS.find((f) => f.value === selectedBackendFramework)?.label}
+              </span>
+            </>
+          )}
         </div>
         <span className="text-xs text-zinc-500">
-          {autoRun ? "Auto-run enabled" : "Manual mode"}
+          {mode === "frontend"
+            ? autoRun ? "Auto-run enabled" : "Manual mode"
+            : serverUrl ? "Server running" : "Ready to start"}
         </span>
       </footer>
     </div>

@@ -13,8 +13,9 @@ node_modules/
 # Production
 /build
 
-# Claude setting
-./claude
+# Claude Code
+.claude/
+/.claude/
 
 # Misc
 .DS_Store
@@ -37,3 +38,5 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+future.txt
