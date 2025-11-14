@@ -1,0 +1,39 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": [
+    "components/**/*.tsx",
+    "hooks/**/*.ts",
+    "app/page.tsx"
+  ],
+  "out": "docs",
+  "exclude": [
+    "node_modules/**/*",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    ".next/**/*"
+  ],
+  "excludePrivate": true,
+  "excludeProtected": false,
+  "excludeExternals": true,
+  "readme": "README.md",
+  "plugin": [],
+  "theme": "default",
+  "name": "TechStack Compare - Component Documentation",
+  "includeVersion": true,
+  "categorizeByGroup": true,
+  "categoryOrder": [
+    "Components",
+    "Hooks",
+    "Pages",
+    "*"
+  ],
+  "sort": ["source-order"],
+  "visibilityFilters": {
+    "protected": false,
+    "private": false,
+    "inherited": true,
+    "external": false
+  },
+  "searchInComments": true,
+  "cleanOutputDir": true
+}

@@ -4,6 +4,57 @@ export const BACKEND_TEMPLATES = {
   express: {
     name: 'Express.js',
     files: {
+      'README.md': `# Express.js Server
+
+## Available Endpoints
+
+### GET /
+Returns a simple greeting message.
+
+**Response:**
+\`\`\`json
+{
+  "message": "Hello from Express!"
+}
+\`\`\`
+
+### GET /api/users
+Returns a list of all users.
+
+**Response:**
+\`\`\`json
+[
+  { "id": 1, "name": "Alice" },
+  { "id": 2, "name": "Bob" }
+]
+\`\`\`
+
+### POST /api/users
+Creates a new user.
+
+**Request Body:**
+\`\`\`json
+{
+  "name": "Charlie"
+}
+\`\`\`
+
+**Response:**
+\`\`\`json
+{
+  "id": 3,
+  "name": "Charlie"
+}
+\`\`\`
+
+## Files Structure
+- \`server.js\` - Main Express server with all routes and middleware
+- \`package.json\` - Dependencies configuration
+
+## Features
+- JSON middleware for parsing request bodies
+- RESTful API endpoints
+- Simple and straightforward Express.js setup`,
       'package.json': `{
   "name": "express-server",
   "type": "module",
@@ -45,6 +96,58 @@ app.listen(PORT, () => {
   fastify: {
     name: 'Fastify',
     files: {
+      'README.md': `# Fastify Server
+
+## Available Endpoints
+
+### GET /
+Returns a simple greeting message.
+
+**Response:**
+\`\`\`json
+{
+  "message": "Hello from Fastify!"
+}
+\`\`\`
+
+### GET /api/users
+Returns a list of all users.
+
+**Response:**
+\`\`\`json
+[
+  { "id": 1, "name": "Alice" },
+  { "id": 2, "name": "Bob" }
+]
+\`\`\`
+
+### POST /api/users
+Creates a new user.
+
+**Request Body:**
+\`\`\`json
+{
+  "name": "Charlie"
+}
+\`\`\`
+
+**Response:**
+\`\`\`json
+{
+  "id": 3,
+  "name": "Charlie"
+}
+\`\`\`
+
+## Files Structure
+- \`server.js\` - Main Fastify server with all routes
+- \`package.json\` - Dependencies configuration
+
+## Features
+- Built-in logging with Pino
+- High performance and low overhead
+- Async/await support throughout
+- Schema-based validation ready`,
       'package.json': `{
   "name": "fastify-server",
   "type": "module",
@@ -89,6 +192,53 @@ try {
   nextjs: {
     name: 'Next.js API Routes',
     files: {
+      'README.md': `# Next.js API Routes
+
+## Available Endpoints
+
+### GET /api/hello
+Returns a simple greeting message.
+
+**Response:**
+\`\`\`json
+{
+  "message": "Hello from Next.js API!"
+}
+\`\`\`
+
+### GET /api/users
+Returns a list of all users.
+
+**Response:**
+\`\`\`json
+[
+  { "id": 1, "name": "Alice" },
+  { "id": 2, "name": "Bob" }
+]
+\`\`\`
+
+### POST /api/users
+Creates a new user.
+
+**Request Body:**
+\`\`\`json
+{
+  "name": "Charlie"
+}
+\`\`\`
+
+**Response:**
+\`\`\`json
+{
+  "id": 3,
+  "name": "Charlie"
+}
+\`\`\`
+
+## Files Structure
+- \`pages/api/hello.js\` - Hello endpoint
+- \`pages/api/users.js\` - Users CRUD endpoint
+- \`pages/index.js\` - Home page with API links`,
       'package.json': `{
   "name": "nextjs-api",
   "scripts": {
@@ -137,6 +287,57 @@ export default function handler(req, res) {
   sveltekit: {
     name: 'SvelteKit',
     files: {
+      'README.md': `# SvelteKit Server
+
+## Available Endpoints
+
+### GET /api/hello
+Returns a simple greeting message.
+
+**Response:**
+\`\`\`json
+{
+  "message": "Hello from SvelteKit!"
+}
+\`\`\`
+
+### GET /api/users
+Returns a list of all users.
+
+**Response:**
+\`\`\`json
+[
+  { "id": 1, "name": "Alice" },
+  { "id": 2, "name": "Bob" }
+]
+\`\`\`
+
+### POST /api/users
+Creates a new user.
+
+**Request Body:**
+\`\`\`json
+{
+  "name": "Charlie"
+}
+\`\`\`
+
+**Response:**
+\`\`\`json
+{
+  "id": 3,
+  "name": "Charlie"
+}
+\`\`\`
+
+## Files Structure
+- \`src/routes/+page.svelte\` - Home page with API links
+- \`src/routes/api/hello/+server.js\` - Hello endpoint
+- \`src/routes/api/users/+server.js\` - Users CRUD endpoint
+- \`src/app.html\` - Base HTML template
+
+## Svelte 5 Features
+This template uses Svelte 5 with runes (\`$state\`, \`$derived\`, etc.)`,
       'package.json': `{
   "name": "sveltekit-server",
   "type": "module",
@@ -144,9 +345,10 @@ export default function handler(req, res) {
     "dev": "vite dev --port 3001"
   },
   "dependencies": {
+    "@sveltejs/adapter-auto": "^3.0.0",
     "@sveltejs/kit": "^2.0.0",
-    "@sveltejs/vite-plugin-svelte": "^3.0.0",
-    "svelte": "^4.2.0",
+    "@sveltejs/vite-plugin-svelte": "^4.0.0",
+    "svelte": "^5.0.0",
     "vite": "^5.0.0"
   }
 }`,
@@ -161,10 +363,24 @@ export default {
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  plugins: [sveltekit()]
+  plugins: [sveltekit()],
+  server: {
+    port: 3001
+  }
 });`,
+      'src/app.html': `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    %sveltekit.head%
+  </head>
+  <body data-sveltekit-preload-data="hover">
+    <div style="display: contents">%sveltekit.body%</div>
+  </body>
+</html>`,
       'src/routes/+page.svelte': `<script>
-  let name = 'SvelteKit';
+  let name = $state('SvelteKit');
 </script>
 
 <div style="padding: 2rem; font-family: system-ui;">

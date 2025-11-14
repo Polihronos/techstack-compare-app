@@ -125,10 +125,12 @@ export async function executeBackend(
 
     // Determine which command to run
     const packageJson = JSON.parse(files['package.json']);
-    const startCommand = packageJson.scripts?.dev || packageJson.scripts?.start;
-    console.log('[WebContainer] Start command:', startCommand || 'node server.js (direct)');
+    const hasDevScript = packageJson.scripts?.dev;
+    const hasStartScript = packageJson.scripts?.start;
+    const scriptName = hasDevScript ? 'dev' : hasStartScript ? 'start' : null;
+    console.log('[WebContainer] Start script:', scriptName ? `npm run ${scriptName}` : 'node server.js (direct)');
 
-    if (!startCommand) {
+    if (!scriptName) {
       // No script defined, try to run server.js directly
       console.log('[WebContainer] Starting server with node server.js...');
       onOutput?.({ type: 'stdout', data: '\n🚀 Starting server...\n' });
@@ -181,10 +183,10 @@ export async function executeBackend(
       });
     } else {
       // Run the dev/start script
-      console.log('[WebContainer] Starting server with npm script...');
+      console.log(`[WebContainer] Starting server with npm run ${scriptName}...`);
       onOutput?.({ type: 'stdout', data: '\n🚀 Starting server...\n' });
 
-      const startProcess = await webcontainer.spawn('npm', ['run', startCommand.split(' ')[0]]);
+      const startProcess = await webcontainer.spawn('npm', ['run', scriptName]);
       currentProcess = startProcess; // Store the process reference
 
       startProcess.output.pipeTo(

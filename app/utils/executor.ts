@@ -1,4 +1,38 @@
-export function executeVanillaJS(code: string): string {
+export function executeVanillaJS(
+  code: string,
+  htmlTemplate?: string,
+  cssContent?: string
+): string {
+  // If HTML template is provided (advanced mode), use it
+  if (htmlTemplate !== undefined && cssContent !== undefined) {
+    // Inject CSS into the HTML template
+    let html = htmlTemplate;
+
+    // Find </head> and insert CSS before it
+    const headEndIndex = html.indexOf('</head>');
+    if (headEndIndex !== -1) {
+      const cssTag = `\n  <style>\n${cssContent}\n  </style>\n`;
+      html = html.slice(0, headEndIndex) + cssTag + html.slice(headEndIndex);
+    }
+
+    // Find </body> and insert script before it
+    const bodyEndIndex = html.indexOf('</body>');
+    if (bodyEndIndex !== -1) {
+      const scriptTag = `\n  <script>
+    try {
+      ${code}
+    } catch (error) {
+      document.getElementById('app').innerHTML = '<div style="color: red; padding: 20px; font-family: monospace;">Error: ' + error.message + '</div>';
+      console.error(error);
+    }
+  </script>\n`;
+      html = html.slice(0, bodyEndIndex) + scriptTag + html.slice(bodyEndIndex);
+    }
+
+    return html;
+  }
+
+  // Simple mode - use embedded template
   return `
 <!DOCTYPE html>
 <html>
@@ -24,7 +58,43 @@ export function executeVanillaJS(code: string): string {
 </html>`;
 }
 
-export function executeReact(code: string): string {
+export function executeReact(
+  code: string,
+  htmlTemplate?: string,
+  cssContent?: string
+): string {
+  // If HTML template is provided (advanced mode), use it
+  if (htmlTemplate !== undefined && cssContent !== undefined) {
+    let html = htmlTemplate;
+
+    // Find </head> and insert CSS + React dependencies before it
+    const headEndIndex = html.indexOf('</head>');
+    if (headEndIndex !== -1) {
+      const headInjection = `\n  <style>\n${cssContent}\n  </style>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>\n`;
+      html = html.slice(0, headEndIndex) + headInjection + html.slice(headEndIndex);
+    }
+
+    // Find </body> and insert script before it
+    const bodyEndIndex = html.indexOf('</body>');
+    if (bodyEndIndex !== -1) {
+      const scriptTag = `\n  <script type="text/babel">
+    try {
+      ${code}
+    } catch (error) {
+      document.getElementById('app').innerHTML = '<div style="color: red; padding: 20px; font-family: monospace;">Error: ' + error.message + '</div>';
+      console.error(error);
+    }
+  </script>\n`;
+      html = html.slice(0, bodyEndIndex) + scriptTag + html.slice(bodyEndIndex);
+    }
+
+    return html;
+  }
+
+  // Simple mode - use embedded template
   return `
 <!DOCTYPE html>
 <html>
@@ -53,7 +123,41 @@ export function executeReact(code: string): string {
 </html>`;
 }
 
-export function executeVue(code: string): string {
+export function executeVue(
+  code: string,
+  htmlTemplate?: string,
+  cssContent?: string
+): string {
+  // If HTML template is provided (advanced mode), use it
+  if (htmlTemplate !== undefined && cssContent !== undefined) {
+    let html = htmlTemplate;
+
+    // Find </head> and insert CSS + Vue dependencies before it
+    const headEndIndex = html.indexOf('</head>');
+    if (headEndIndex !== -1) {
+      const headInjection = `\n  <style>\n${cssContent}\n  </style>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>\n`;
+      html = html.slice(0, headEndIndex) + headInjection + html.slice(headEndIndex);
+    }
+
+    // Find </body> and insert script before it
+    const bodyEndIndex = html.indexOf('</body>');
+    if (bodyEndIndex !== -1) {
+      const scriptTag = `\n  <script>
+    try {
+      ${code}
+    } catch (error) {
+      document.getElementById('app').innerHTML = '<div style="color: red; padding: 20px; font-family: monospace;">Error: ' + error.message + '</div>';
+      console.error(error);
+    }
+  </script>\n`;
+      html = html.slice(0, bodyEndIndex) + scriptTag + html.slice(bodyEndIndex);
+    }
+
+    return html;
+  }
+
+  // Simple mode - use embedded template
   return `
 <!DOCTYPE html>
 <html>
@@ -80,19 +184,16 @@ export function executeVue(code: string): string {
 </html>`;
 }
 
-export function executeSvelte(code: string): string {
+export function executeSvelte(
+  code: string,
+  htmlTemplate?: string,
+  cssContent?: string
+): string {
   // Use esm.sh which supports .svelte files directly
   const codeEncoded = btoa(unescape(encodeURIComponent(code)));
 
-  const html = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body { margin: 0; padding: 0; }
-    #app { min-height: 100vh; }
-  </style>
+  // Build the Svelte execution script
+  const svelteScript = `
   <script type="importmap">
   {
     "imports": {
@@ -101,9 +202,6 @@ export function executeSvelte(code: string): string {
     }
   }
   </script>
-</head>
-<body>
-  <div id="app"></div>
 
   <script type="module">
     try {
@@ -175,18 +273,30 @@ mount(Component, { target: document.getElementById('app') });
         '<div style="color: red; padding: 20px; font-family: monospace;">Setup Error: ' + error.message + '</div>';
       console.error(error);
     }
-  </script>
-</body>
-</html>`;
+  </script>`;
 
-  return html;
-}
+  // If HTML template is provided (advanced mode), use it
+  if (htmlTemplate !== undefined && cssContent !== undefined) {
+    let html = htmlTemplate;
 
-export async function executeAngular(code: string): Promise<string> {
-  // Simplified Angular execution - just parse template and create reactive component
-  const codeEncoded = btoa(unescape(encodeURIComponent(code)));
+    // Find </head> and insert CSS before it
+    const headEndIndex = html.indexOf('</head>');
+    if (headEndIndex !== -1) {
+      const cssTag = `\n  <style>\n${cssContent}\n  </style>\n`;
+      html = html.slice(0, headEndIndex) + cssTag + html.slice(headEndIndex);
+    }
 
-  return `<!DOCTYPE html>
+    // Find </body> and insert Svelte script before it
+    const bodyEndIndex = html.indexOf('</body>');
+    if (bodyEndIndex !== -1) {
+      html = html.slice(0, bodyEndIndex) + svelteScript + '\n' + html.slice(bodyEndIndex);
+    }
+
+    return html;
+  }
+
+  // Simple mode - use embedded template
+  const html = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
@@ -198,7 +308,23 @@ export async function executeAngular(code: string): Promise<string> {
 </head>
 <body>
   <div id="app"></div>
+  ${svelteScript}
+</body>
+</html>`;
 
+  return html;
+}
+
+export async function executeAngular(
+  code: string,
+  htmlTemplate?: string,
+  cssContent?: string
+): Promise<string> {
+  // Simplified Angular execution - just parse template and create reactive component
+  const codeEncoded = btoa(unescape(encodeURIComponent(code)));
+
+  // Build the Angular execution script
+  const angularScript = `
   <script src="https://unpkg.com/typescript@latest/lib/typescript.js"></script>
   <script>
     (function() {
@@ -296,7 +422,42 @@ export async function executeAngular(code: string): Promise<string> {
           '<div style="color: red; padding: 20px; font-family: monospace;">Error: ' + error.message + '<br><br>Stack: ' + error.stack + '</div>';
       }
     })();
-  </script>
+  </script>`;
+
+  // If HTML template is provided (advanced mode), use it
+  if (htmlTemplate !== undefined && cssContent !== undefined) {
+    let html = htmlTemplate;
+
+    // Find </head> and insert CSS before it
+    const headEndIndex = html.indexOf('</head>');
+    if (headEndIndex !== -1) {
+      const cssTag = `\n  <style>\n${cssContent}\n  </style>\n`;
+      html = html.slice(0, headEndIndex) + cssTag + html.slice(headEndIndex);
+    }
+
+    // Find </body> and insert Angular script before it
+    const bodyEndIndex = html.indexOf('</body>');
+    if (bodyEndIndex !== -1) {
+      html = html.slice(0, bodyEndIndex) + angularScript + '\n' + html.slice(bodyEndIndex);
+    }
+
+    return html;
+  }
+
+  // Simple mode - use embedded template
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { margin: 0; padding: 0; }
+    #app { min-height: 100vh; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  ${angularScript}
 </body>
 </html>`;
 }

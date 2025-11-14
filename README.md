@@ -29,7 +29,7 @@ All frameworks run in an isolated iframe using CDN resources.
 
 ## Backend Frameworks
 
-- Express.js ✅
+- Express.js
 - Fastify
 - Next.js API Routes
 - SvelteKit
