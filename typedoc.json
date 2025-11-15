@@ -1,5 +1,6 @@
 {
   "$schema": "https://typedoc.org/schema.json",
+  "tsconfig": "./tsconfig.docs.json",
   "entryPoints": [
     "components/**/*.tsx",
     "hooks/**/*.ts",
@@ -11,7 +12,10 @@
     "node_modules/**/*",
     "**/*.test.ts",
     "**/*.test.tsx",
-    ".next/**/*"
+    "**/__tests__/**/*",
+    ".next/**/*",
+    "vitest.config.ts",
+    "playwright.config.ts"
   ],
   "excludePrivate": true,
   "excludeProtected": false,

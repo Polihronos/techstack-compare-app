@@ -107,4 +107,6 @@ function Counter() {
   );
 }
 
-ReactDOM.render(<Counter />, document.getElementById('app'));`;
+// React 18+ API
+const root = ReactDOM.createRoot(document.getElementById('app'));
+root.render(<Counter />);`;

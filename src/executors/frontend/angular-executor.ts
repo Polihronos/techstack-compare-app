@@ -102,8 +102,10 @@ export class AngularExecutor extends BaseFrontendExecutor {
           const interpolations = html.match(/\\{\\{\\s*([^}]+)\\s*\\}\\}/g);
           if (interpolations) {
             interpolations.forEach(interp => {
-              const prop = interp.replace(/\\{\\{\\s*/, '').replace(/\\s*\\}\\}/, '');
-              html = html.replace(interp, this[prop] !== undefined ? this[prop] : '');
+              const prop = interp.replace(/\\{\\{\\s*/, '').replace(/\\s*\\}\\}/, '').trim();
+              // Handle property paths like "data.name" by traversing the object
+              const value = prop.split('.').reduce((obj, key) => obj?.[key], this);
+              html = html.replace(interp, value !== undefined ? value : '');
             });
           }
 
@@ -141,6 +143,12 @@ export class AngularExecutor extends BaseFrontendExecutor {
 
         // Create and mount component
         const component = new Component();
+
+        // Call ngOnInit lifecycle hook if it exists
+        if (typeof component.ngOnInit === 'function') {
+          component.ngOnInit();
+        }
+
         component.render();
         component.attachEvents();
 

@@ -18,6 +18,9 @@ export class VueExecutor extends BaseFrontendExecutor {
     // Remove external CSS references to avoid 404 errors
     html = html.replace(/<link\s+rel="stylesheet"\s+href="[^"]*"[^>]*>/gi, '');
 
+    // Remove external script references to avoid 404 errors (BEFORE adding our CDN scripts)
+    html = html.replace(/<script\s+src="[^"]*"[^>]*><\/script>/gi, '');
+
     // Find </head> and insert CSS + Vue dependencies before it
     const headEndIndex = html.indexOf('</head>');
     if (headEndIndex !== -1) {
@@ -25,9 +28,6 @@ export class VueExecutor extends BaseFrontendExecutor {
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>\n`;
       html = html.slice(0, headEndIndex) + headInjection + html.slice(headEndIndex);
     }
-
-    // Remove external script references to avoid 404 errors
-    html = html.replace(/<script\s+src="[^"]*"[^>]*><\/script>/gi, '');
 
     // Find </body> and insert script before it
     const bodyEndIndex = html.indexOf('</body>');

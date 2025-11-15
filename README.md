@@ -2,15 +2,11 @@
 
 Interactive code playground for testing and comparing frontend and backend frameworks side-by-side.
 
-** [Live Demo on Vercel](https://techstack-compare-mu.vercel.app/)**
-
-![Frontend Mode](public/Frontend.png)
+**[Live Demo on Vercel](https://techstack-compare-mu.vercel.app/)**
 
 ## What it does
 
 **Frontend Mode:** Write code in Vanilla JS, React, Vue, Svelte, or Angular and see the output live. Auto-run updates the preview as you type. Switch between Simple mode (single file) and Advanced mode (separate HTML/CSS/JS files).
-
-![Backend Mode](public/Backend.png)
 
 **Backend Mode:** Run Node.js backend frameworks in the browser using WebContainers. See server logs in the terminal and API responses in the preview. Full file system with npm package installation.
 
@@ -140,6 +136,12 @@ npm run start        # Start production server
 npm run lint         # Run ESLint
 npm run docs         # Generate documentation
 npm run docs:watch   # Generate docs in watch mode
+
+npm test              # Run tests in watch mode
+npm run test:run      # Run once
+npm run test:coverage # Generate coverage report
+npm run test:ui       # Visual test UI
+npm run e2e          # Run E2E tests (when ready)
 ```
 
 ## License

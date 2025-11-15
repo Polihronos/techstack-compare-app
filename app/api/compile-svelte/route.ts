@@ -23,10 +23,16 @@ export async function POST(request: NextRequest) {
     // Get the compiled code
     let compiledCode = result.js.code;
 
-    // Replace Svelte internal imports with empty implementations
+    // Replace ALL Svelte imports (named, namespace, and side-effect imports)
     compiledCode = compiledCode
-      .replace(/import\s+{[^}]*}\s+from\s+['"]svelte\/internal[^'"]*['"];?/g, '')
-      .replace(/import\s+{[^}]*}\s+from\s+['"]svelte[^'"]*['"];?/g, '');
+      // Remove named imports: import { ... } from 'svelte...'
+      .replace(/import\s+{[^}]*}\s+from\s+['"]svelte[^'"]*['"];?\n?/g, '')
+      // Remove namespace imports: import * as $ from 'svelte...' ($ is not \w)
+      .replace(/import\s+\*\s+as\s+[$\w]+\s+from\s+['"]svelte[^'"]*['"];?\n?/g, '')
+      // Remove default imports: import $ from 'svelte...'
+      .replace(/import\s+[$\w]+\s+from\s+['"]svelte[^'"]*['"];?\n?/g, '')
+      // Remove side-effect imports: import 'svelte...'
+      .replace(/import\s+['"]svelte[^'"]*['"];?\n?/g, '');
 
     // Return the compiled JavaScript
     return NextResponse.json({

@@ -17,9 +17,25 @@ export async function POST(request: NextRequest) {
     const template = templateMatch ? templateMatch[1] : '<div>No template found</div>';
 
     // Extract component class code (properties and methods)
-    const classRegex = new RegExp('export class \\w+\\s*\\{([\\s\\S]*?)\\}\\s*$', 'm');
-    const classMatch = code.match(classRegex);
-    const classBody = classMatch ? classMatch[1].trim() : '';
+    // Find the class and extract its body by matching braces
+    const classStartMatch = code.match(/export class \w+\s*\{/);
+    let classBody = '';
+
+    if (classStartMatch) {
+      const startIndex = classStartMatch.index! + classStartMatch[0].length;
+      let braceCount = 1;
+      let i = startIndex;
+
+      // Find matching closing brace
+      while (i < code.length && braceCount > 0) {
+        if (code[i] === '{') braceCount++;
+        if (code[i] === '}') braceCount--;
+        i++;
+      }
+
+      // Extract class body (everything between opening and closing braces)
+      classBody = code.substring(startIndex, i - 1).trim();
+    }
 
     // Send template and class body as JSON, build script in iframe
     return NextResponse.json({
