@@ -4,7 +4,10 @@ import { FrameworkSelector } from "./FrameworkSelector";
 import { FileExplorer } from "./FileExplorer";
 import { Button } from "@/components/ui/button";
 import { type Framework } from "@/components/FrameworkIcon";
-import { type BackendFramework } from "@/app/utils/backend-templates";
+import { type BackendFrameworkId } from "@/src/frameworks/types";
+
+// Type alias for compatibility
+type BackendFramework = BackendFrameworkId;
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
   ssr: false,
@@ -47,9 +50,7 @@ const getLanguageFromFilename = (filename: string): string => {
 };
 
 /**
- * EditorPanel Component
- *
- * @description Code editor panel with framework selector and Monaco editor.
+ * Code editor panel with framework selector and Monaco editor.
  * Supports both frontend and backend modes with appropriate framework options.
  *
  * @param {Object} props - Component props

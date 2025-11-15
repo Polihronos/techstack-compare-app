@@ -6,9 +6,7 @@ import { Zap } from "lucide-react";
 export type Framework = "vanilla" | "react" | "vue" | "svelte" | "angular";
 
 /**
- * FrameworkIcon Component
- *
- * @description Displays the appropriate icon for each frontend framework using SVG paths.
+ * Displays the appropriate icon for each frontend framework using SVG paths.
  * Each icon is styled with framework-specific colors matching their branding.
  *
  * @param {Object} props - Component props

@@ -4,11 +4,11 @@ import { useState, useRef, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
 import { EditorPanel } from "@/components/editor/EditorPanel";
 import { PreviewPanel } from "@/components/preview/PreviewPanel";
-import { FrameworkIcon, type Framework } from "@/components/FrameworkIcon";
-import { FRONTEND_TEMPLATES, SIMPLE_TEMPLATES } from "./utils/templates";
-import { BACKEND_TEMPLATES, type BackendFramework } from "./utils/backend-templates";
-import { type TerminalOutput } from "./utils/webcontainer-executor";
+import { FrameworkIcon } from "@/components/FrameworkIcon";
 import { useCodeExecution } from "@/hooks/useCodeExecution";
+import { useAppStore } from "@/src/stores/app-store";
+import { FRAMEWORKS, getFrontendFrameworks, getBackendFrameworks } from "@/src/frameworks";
+import type { FrameworkId, FrontendFrameworkId, BackendFrameworkId } from "@/src/frameworks/types";
 import {
   ResizablePanelGroup,
   ResizablePanel,
@@ -16,119 +16,112 @@ import {
 } from "@/components/ui/resizable";
 import { Server } from "lucide-react";
 
-const FRAMEWORKS: { value: Framework; label: string; color: string }[] = [
-  { value: "vanilla", label: "Vanilla JS", color: "bg-yellow-500" },
-  { value: "react", label: "React", color: "bg-blue-500" },
-  { value: "vue", label: "Vue 3", color: "bg-green-500" },
-  { value: "svelte", label: "Svelte", color: "bg-orange-500" },
-  { value: "angular", label: "Angular", color: "bg-red-500" },
-];
-
-const BACKEND_FRAMEWORKS: { value: BackendFramework; label: string; color: string }[] = [
-  { value: "express", label: "Express.js", color: "bg-gray-500" },
-  { value: "fastify", label: "Fastify", color: "bg-black" },
-  { value: "nextjs", label: "Next.js API", color: "bg-black" },
-  { value: "sveltekit", label: "SvelteKit", color: "bg-orange-500" },
-];
-
 export default function Home() {
   const { handleRunFrontend, handleRunBackend } = useCodeExecution();
 
-  // Mode toggle
-  const [mode, setMode] = useState<"frontend" | "backend">("frontend");
+  // Zustand store
+  const {
+    selectedFramework,
+    frameworkType,
+    viewMode,
+    editor,
+    preview,
+    setFramework,
+    setViewMode,
+    setCode,
+    setHtmlContent,
+    setCssContent,
+    setPreviewUrl,
+    appendTerminalOutput,
+    clearTerminalOutput,
+    setPreviewLoading,
+  } = useAppStore();
 
-  // Frontend state
-  const [selectedFramework, setSelectedFramework] = useState<Framework>("vanilla");
-  const [frontendViewMode, setFrontendViewMode] = useState<"simple" | "advanced">("simple");
-  const [frontendFiles, setFrontendFiles] = useState<Record<string, string>>({});
-  const [selectedFrontendFile, setSelectedFrontendFile] = useState<string>("script.js");
-  const [isRunning, setIsRunning] = useState(false);
-  const [error, setError] = useState<string>("");
+  // Local UI state
+  const [selectedFile, setSelectedFile] = useState<string>("script.js");
+  const [files, setFiles] = useState<Record<string, string>>({});
   const [autoRun, setAutoRun] = useState(true);
+  const [error, setError] = useState<string>("");
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  // Backend state
-  const [selectedBackendFramework, setSelectedBackendFramework] =
-    useState<BackendFramework>("express");
-  const [backendFiles, setBackendFiles] = useState<Record<string, string>>({});
-  const [selectedBackendFile, setSelectedBackendFile] = useState<string>("README.md");
-  const [serverUrl, setServerUrl] = useState<string>("");
-  const [terminalOutputs, setTerminalOutputs] = useState<TerminalOutput[]>([]);
+  // Get current framework config
+  const currentFramework = FRAMEWORKS[selectedFramework];
 
-  // Load frontend template when framework or view mode changes
+  // Load templates when framework or view mode changes
   useEffect(() => {
-    if (mode === "frontend") {
-      const template = frontendViewMode === "simple"
-        ? SIMPLE_TEMPLATES[selectedFramework]
-        : FRONTEND_TEMPLATES[selectedFramework];
-      setFrontendFiles(template.files);
-      // Set default file based on framework
-      const defaultFile = selectedFramework === 'svelte' ? 'App.svelte' :
-                         selectedFramework === 'angular' ? 'counter.component.ts' :
-                         'script.js';
-      setSelectedFrontendFile(defaultFile);
-    }
-  }, [selectedFramework, mode, frontendViewMode]);
+    if (!currentFramework) return;
 
-  // Load backend template when backend framework changes
-  useEffect(() => {
-    if (mode === "backend") {
-      const template = BACKEND_TEMPLATES[selectedBackendFramework];
-      setBackendFiles(template.files);
-      setSelectedBackendFile("README.md"); // Default to README
-      setServerUrl("");
+    if (frameworkType === 'frontend') {
+      const template = viewMode === 'simple'
+        ? currentFramework.simpleTemplate
+        : currentFramework.advancedTemplate;
+
+      if (viewMode === 'simple' && template && 'code' in template && typeof template.code === 'string') {
+        // Simple mode: single file
+        const fileName = selectedFramework === 'svelte' ? 'App.svelte' :
+                        selectedFramework === 'angular' ? 'counter.component.ts' :
+                        'script.js';
+        setFiles({ [fileName]: template.code });
+        setSelectedFile(fileName);
+        setCode(template.code);
+      } else if (viewMode === 'advanced' && template && 'files' in template) {
+        // Advanced mode: multiple files
+        const advancedFiles = (template as any).files || {};
+        setFiles(advancedFiles);
+
+        // Set default file based on framework
+        const defaultFile = selectedFramework === 'svelte' ? 'App.svelte' :
+                           selectedFramework === 'angular' ? 'counter.component.ts' :
+                           'script.js';
+        setSelectedFile(defaultFile);
+        setCode(advancedFiles[defaultFile] || '');
+        setHtmlContent(advancedFiles['index.html'] || '');
+        setCssContent(advancedFiles['styles.css'] || '');
+      }
+    } else {
+      // Backend: always use advanced template (file system)
+      const template = currentFramework.advancedTemplate as Record<string, string>;
+      setFiles(template);
+      setSelectedFile('README.md');
+      setCode(template['README.md'] || '');
+      clearTerminalOutput();
+      setPreviewUrl('');
       setTerminalOutputs([]);
     }
-  }, [selectedBackendFramework, mode]);
+  }, [selectedFramework, frameworkType, viewMode, currentFramework]);
 
-  // Write terminal outputs
+  // Local state for terminal outputs
+  const [terminalOutputs, setTerminalOutputs] = useState<any[]>([]);
+
+  // Write terminal outputs to XTerm.js
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (mode === "backend" && terminalOutputs.length > 0) {
-      const latestOutput = terminalOutputs[terminalOutputs.length - 1];
+    if (frameworkType === "backend" && terminalOutputs.length > 0) {
       const terminal = (window as any).__terminal;
       if (terminal) {
+        const latestOutput = terminalOutputs[terminalOutputs.length - 1];
         terminal.write(latestOutput.data);
       }
     }
-  }, [terminalOutputs, mode]);
+  }, [terminalOutputs, frameworkType]);
 
-  // Helper function to get code for execution (combines HTML/CSS/JS in advanced mode)
-  const getExecutableCode = () => {
-    const mainFile = selectedFramework === 'svelte' ? 'App.svelte' :
-                    selectedFramework === 'angular' ? 'counter.component.ts' :
-                    'script.js';
-
-    if (frontendViewMode === "simple") {
-      // Simple mode: just return the main code file
-      return frontendFiles[mainFile] || '';
-    } else {
-      // Advanced mode: combine HTML, CSS, and JS
-      // For now, still return just the main file (we'll inject HTML/CSS through the executor)
-      return frontendFiles[mainFile] || '';
-    }
-  };
-
-  // Auto-run effect with debouncing (frontend only)
+  // Auto-run effect for frontend
   useEffect(() => {
-    if (mode !== "frontend" || !autoRun) return;
+    if (frameworkType !== 'frontend' || !autoRun) return;
 
     const timeoutId = setTimeout(() => {
-      // Get the main code file for execution
       const mainFile = selectedFramework === 'svelte' ? 'App.svelte' :
                       selectedFramework === 'angular' ? 'counter.component.ts' :
                       'script.js';
-      const codeToRun = frontendFiles[mainFile] || '';
-
-      // In advanced mode, extract HTML and CSS files
-      const htmlTemplate = frontendViewMode === 'advanced' ? frontendFiles['index.html'] : undefined;
-      const cssContent = frontendViewMode === 'advanced' ? frontendFiles['styles.css'] : undefined;
+      const codeToRun = files[mainFile] || '';
+      const htmlTemplate = viewMode === 'advanced' ? files['index.html'] : undefined;
+      const cssContent = viewMode === 'advanced' ? files['styles.css'] : undefined;
 
       handleRunFrontend({
-        framework: selectedFramework,
+        framework: selectedFramework as FrontendFrameworkId,
         code: codeToRun,
         iframeRef,
-        setIsRunning,
+        setIsRunning: setPreviewLoading,
         setError,
         htmlTemplate,
         cssContent,
@@ -136,83 +129,109 @@ export default function Home() {
     }, 1000);
 
     return () => clearTimeout(timeoutId);
-  }, [frontendFiles, autoRun, mode, selectedFramework, handleRunFrontend, frontendViewMode]);
+  }, [files, autoRun, frameworkType, selectedFramework, viewMode]);
 
-  // Handler for manual run/refresh
+  // Handle refresh/run
   const handleRefresh = () => {
-    if (mode === "frontend") {
-      // Get the main code file for execution
+    if (frameworkType === 'frontend') {
       const mainFile = selectedFramework === 'svelte' ? 'App.svelte' :
                       selectedFramework === 'angular' ? 'counter.component.ts' :
                       'script.js';
-      const codeToRun = frontendFiles[mainFile] || '';
-
-      // In advanced mode, extract HTML and CSS files
-      const htmlTemplate = frontendViewMode === 'advanced' ? frontendFiles['index.html'] : undefined;
-      const cssContent = frontendViewMode === 'advanced' ? frontendFiles['styles.css'] : undefined;
+      const codeToRun = files[mainFile] || '';
+      const htmlTemplate = viewMode === 'advanced' ? files['index.html'] : undefined;
+      const cssContent = viewMode === 'advanced' ? files['styles.css'] : undefined;
 
       handleRunFrontend({
-        framework: selectedFramework,
+        framework: selectedFramework as FrontendFrameworkId,
         code: codeToRun,
         iframeRef,
-        setIsRunning,
+        setIsRunning: setPreviewLoading,
         setError,
         htmlTemplate,
         cssContent,
       });
     } else {
       handleRunBackend({
-        backendFiles,
-        setIsRunning,
+        backendFiles: files,
+        setIsRunning: setPreviewLoading,
         setError,
-        setServerUrl,
-        setTerminalOutputs,
+        setServerUrl: setPreviewUrl,
+        setTerminalOutputs: setTerminalOutputs,
       });
     }
   };
 
-  // Get current code based on mode
-  const currentCode =
-    mode === "frontend"
-      ? frontendFiles[selectedFrontendFile] || ""
-      : backendFiles[selectedBackendFile] || "";
-
   // Handle code change
   const handleCodeChange = (value: string) => {
-    if (mode === "frontend") {
-      setFrontendFiles({ ...frontendFiles, [selectedFrontendFile]: value });
-    } else {
-      setBackendFiles({ ...backendFiles, [selectedBackendFile]: value });
+    setFiles({ ...files, [selectedFile]: value });
+    setCode(value);
+
+    // Update HTML/CSS in store if changed
+    if (selectedFile === 'index.html') setHtmlContent(value);
+    if (selectedFile === 'styles.css') setCssContent(value);
+  };
+
+  // Handle framework change
+  const handleFrameworkChange = (id: FrameworkId) => {
+    const framework = FRAMEWORKS[id];
+    if (framework) {
+      setFramework(id, framework.type);
     }
   };
+
+  // Get frameworks for UI
+  const frontendFrameworks = getFrontendFrameworks().map(fw => ({
+    value: fw.id as FrontendFrameworkId,
+    label: fw.name,
+    color: fw.color,
+  }));
+
+  const backendFrameworks = getBackendFrameworks().map(fw => ({
+    value: fw.id as BackendFrameworkId,
+    label: fw.name,
+    color: fw.color,
+  }));
 
   return (
     <div className="flex flex-col h-screen bg-zinc-950">
       {/* Header */}
-      <Header mode={mode} onModeChange={setMode} />
+      <Header
+        mode={frameworkType}
+        onModeChange={(mode) => {
+          // Switch to first framework of that type
+          const firstFramework = mode === 'frontend' ? 'vanilla' : 'express';
+          setFramework(firstFramework, mode);
+        }}
+      />
 
       {/* Main Content - Resizable Split View */}
       <ResizablePanelGroup direction="horizontal" className="flex-1">
         {/* Editor Panel */}
         <ResizablePanel defaultSize={50} minSize={30}>
           <EditorPanel
-            mode={mode}
-            selectedFramework={selectedFramework}
-            onFrameworkChange={setSelectedFramework}
-            selectedBackendFramework={selectedBackendFramework}
-            onBackendFrameworkChange={setSelectedBackendFramework}
-            code={currentCode}
+            mode={frameworkType}
+            selectedFramework={frameworkType === 'frontend' ? selectedFramework as FrontendFrameworkId : 'vanilla'}
+            onFrameworkChange={(fw) => handleFrameworkChange(fw)}
+            selectedBackendFramework={frameworkType === 'backend' ? selectedFramework as BackendFrameworkId : 'express'}
+            onBackendFrameworkChange={(fw) => handleFrameworkChange(fw)}
+            code={files[selectedFile] || ''}
             onCodeChange={handleCodeChange}
-            frontendFrameworks={FRAMEWORKS}
-            backendFrameworks={BACKEND_FRAMEWORKS}
-            frontendViewMode={frontendViewMode}
-            onFrontendViewModeChange={setFrontendViewMode}
-            frontendFiles={frontendFiles}
-            selectedFrontendFile={selectedFrontendFile}
-            onFrontendFileSelect={setSelectedFrontendFile}
-            backendFiles={backendFiles}
-            selectedBackendFile={selectedBackendFile}
-            onBackendFileSelect={setSelectedBackendFile}
+            frontendFrameworks={frontendFrameworks}
+            backendFrameworks={backendFrameworks}
+            frontendViewMode={viewMode}
+            onFrontendViewModeChange={setViewMode}
+            frontendFiles={files}
+            selectedFrontendFile={selectedFile}
+            onFrontendFileSelect={(file) => {
+              setSelectedFile(file);
+              setCode(files[file] || '');
+            }}
+            backendFiles={files}
+            selectedBackendFile={selectedFile}
+            onBackendFileSelect={(file) => {
+              setSelectedFile(file);
+              setCode(files[file] || '');
+            }}
           />
         </ResizablePanel>
 
@@ -221,15 +240,15 @@ export default function Home() {
         {/* Preview Panel */}
         <ResizablePanel defaultSize={50} minSize={30}>
           <PreviewPanel
-            mode={mode}
-            selectedFramework={selectedFramework}
+            mode={frameworkType}
+            selectedFramework={frameworkType === 'frontend' ? selectedFramework as FrontendFrameworkId : 'vanilla'}
             error={error}
-            isRunning={isRunning}
+            isRunning={preview.isLoading}
             autoRun={autoRun}
             onToggleAutoRun={() => setAutoRun(!autoRun)}
             onRefresh={handleRefresh}
             iframeRef={iframeRef}
-            serverUrl={serverUrl}
+            serverUrl={preview.url}
           />
         </ResizablePanel>
       </ResizablePanelGroup>
@@ -237,32 +256,28 @@ export default function Home() {
       {/* Status Bar */}
       <footer className="px-6 py-2 bg-zinc-900 border-t border-zinc-800 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          {mode === "frontend" ? (
+          {frameworkType === "frontend" ? (
             <>
-              <FrameworkIcon framework={selectedFramework} />
+              <FrameworkIcon framework={selectedFramework as FrontendFrameworkId} />
               <span className="text-sm text-zinc-400">
-                {FRAMEWORKS.find((f) => f.value === selectedFramework)?.label}
+                {currentFramework?.name}
               </span>
             </>
           ) : (
             <>
               <Server className="w-4 h-4 text-green-500" />
               <span className="text-sm text-zinc-400">
-                {
-                  BACKEND_FRAMEWORKS.find(
-                    (f) => f.value === selectedBackendFramework
-                  )?.label
-                }
+                {currentFramework?.name}
               </span>
             </>
           )}
         </div>
         <span className="text-xs text-zinc-500">
-          {mode === "frontend"
+          {frameworkType === "frontend"
             ? autoRun
               ? "Auto-run enabled"
               : "Manual mode"
-            : serverUrl
+            : preview.url
             ? "Server running"
             : "Ready to start"}
         </span>

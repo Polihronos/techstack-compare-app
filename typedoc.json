@@ -3,9 +3,10 @@
   "entryPoints": [
     "components/**/*.tsx",
     "hooks/**/*.ts",
-    "app/page.tsx"
+    "app/page.tsx",
+    "src/**/*.ts"
   ],
-  "out": "docs",
+  "out": "public/docs",
   "exclude": [
     "node_modules/**/*",
     "**/*.test.ts",

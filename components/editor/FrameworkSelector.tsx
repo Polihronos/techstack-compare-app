@@ -1,12 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { FrameworkIcon, type Framework } from "@/components/FrameworkIcon";
 import { Server } from "lucide-react";
-import { type BackendFramework } from "@/app/utils/backend-templates";
+import { type BackendFrameworkId } from "@/src/frameworks/types";
+
+// Type alias for compatibility
+type BackendFramework = BackendFrameworkId;
 
 /**
- * FrameworkSelector Component
- *
- * @description Renders a row of framework selection buttons.
+ * Renders a row of framework selection buttons.
  * Supports both frontend and backend frameworks with appropriate styling.
  *
  * @template T - The framework type (Framework | BackendFramework)

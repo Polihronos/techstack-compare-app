@@ -1,6 +1,6 @@
 import { RefObject } from "react";
 import dynamic from "next/dynamic";
-import { Play, RotateCw, Server, Terminal as TerminalIcon } from "lucide-react";
+import { Play, RotateCw, Server, Terminal as TerminalIcon, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BrowserChrome } from "./BrowserChrome";
 import {
@@ -24,9 +24,7 @@ const Terminal = dynamic(
 );
 
 /**
- * PreviewPanel Component
- *
- * @description Preview panel that displays either a frontend iframe preview
+ * Preview panel that displays either a frontend iframe preview
  * or a backend server preview with integrated terminal output.
  *
  * @param {Object} props - Component props
@@ -111,9 +109,7 @@ export function PreviewPanel({
             }`}
           >
             <RotateCw
-              className={`w-3 h-3 ${
-                isRunning && autoRun ? "animate-spin" : ""
-              }`}
+              className={`w-3 h-3 ${autoRun ? "animate-spin" : ""}`}
             />
             <span className="ml-1.5 text-xs">
               {autoRun ? "Auto-run ON" : "Auto-run OFF"}
@@ -127,7 +123,11 @@ export function PreviewPanel({
             disabled={isRunning}
             className="h-7 px-2 bg-green-600 hover:bg-green-700"
           >
-            <Play className={`w-3 h-3 ${isRunning ? "animate-spin" : ""}`} />
+            {isRunning ? (
+              <Loader2 className="w-3 h-3 animate-spin" />
+            ) : (
+              <Play className="w-3 h-3" />
+            )}
             <span className="ml-1.5 text-xs">Run Server</span>
           </Button>
         )}

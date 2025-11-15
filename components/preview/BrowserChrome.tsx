@@ -2,9 +2,7 @@ import { ChevronLeft, ChevronRight, RotateCw, Lock, Home as HomeIcon } from "luc
 import { Button } from "@/components/ui/button";
 
 /**
- * BrowserChrome Component
- *
- * @description Simulates a browser navigation bar with back/forward buttons,
+ * Simulates a browser navigation bar with back/forward buttons,
  * refresh button, address bar, and home button.
  *
  * @param {Object} props - Component props

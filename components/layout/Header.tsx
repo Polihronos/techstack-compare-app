@@ -1,10 +1,8 @@
-import { Sparkles, Monitor, Server } from "lucide-react";
+import { Sparkles, Monitor, Server, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 /**
- * Header Component
- *
- * @description Main application header with branding and mode toggle.
+ * Main application header with branding and mode toggle.
  * Allows users to switch between frontend and backend development modes.
  *
  * @param {Object} props - Component props
@@ -42,33 +40,46 @@ export function Header({
         </div>
       </div>
 
-      {/* Mode Toggle */}
-      <div className="flex items-center gap-2 bg-zinc-800 rounded-lg p-1">
+      <div className="flex items-center gap-3">
+        {/* Mode Toggle */}
+        <div className="flex items-center gap-2 bg-zinc-800 rounded-lg p-1">
+          <Button
+            onClick={() => onModeChange("frontend")}
+            variant={mode === "frontend" ? "default" : "ghost"}
+            size="sm"
+            className={`h-8 px-3 ${
+              mode === "frontend"
+                ? "bg-blue-600 hover:bg-blue-700"
+                : "text-zinc-400 hover:text-zinc-300 hover:bg-zinc-700"
+            }`}
+          >
+            <Monitor className="w-4 h-4 mr-1.5" />
+            Frontend
+          </Button>
+          <Button
+            onClick={() => onModeChange("backend")}
+            variant={mode === "backend" ? "default" : "ghost"}
+            size="sm"
+            className={`h-8 px-3 ${
+              mode === "backend"
+                ? "bg-green-600 hover:bg-green-700"
+                : "text-zinc-400 hover:text-zinc-300 hover:bg-zinc-700"
+            }`}
+          >
+            <Server className="w-4 h-4 mr-1.5" />
+            Backend
+          </Button>
+        </div>
+
+        {/* Documentation Button */}
         <Button
-          onClick={() => onModeChange("frontend")}
-          variant={mode === "frontend" ? "default" : "ghost"}
+          onClick={() => window.open('/docs/index.html', '_blank')}
+          variant="ghost"
           size="sm"
-          className={`h-8 px-3 ${
-            mode === "frontend"
-              ? "bg-blue-600 hover:bg-blue-700"
-              : "text-zinc-400 hover:text-zinc-300 hover:bg-zinc-700"
-          }`}
+          className="h-8 px-3 text-zinc-400 hover:text-zinc-300 hover:bg-zinc-800"
         >
-          <Monitor className="w-4 h-4 mr-1.5" />
-          Frontend
-        </Button>
-        <Button
-          onClick={() => onModeChange("backend")}
-          variant={mode === "backend" ? "default" : "ghost"}
-          size="sm"
-          className={`h-8 px-3 ${
-            mode === "backend"
-              ? "bg-green-600 hover:bg-green-700"
-              : "text-zinc-400 hover:text-zinc-300 hover:bg-zinc-700"
-          }`}
-        >
-          <Server className="w-4 h-4 mr-1.5" />
-          Backend
+          <BookOpen className="w-4 h-4 mr-1.5" />
+          Docs
         </Button>
       </div>
     </header>

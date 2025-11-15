@@ -2,9 +2,7 @@ import { File, FileJson, FileCode, FileText, Folder, FolderOpen, ChevronRight, C
 import { useState } from "react";
 
 /**
- * FileExplorer Component
- *
- * @description VSCode-like file explorer sidebar that displays a file tree structure.
+ * VSCode-like file explorer sidebar that displays a file tree structure.
  * Supports file selection, folder expansion/collapse, and file type icons.
  *
  * @param {Object} props - Component props
