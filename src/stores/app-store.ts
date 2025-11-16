@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand';
-import type { FrameworkId, ViewMode } from '../frameworks/types';
+import type { FrameworkId, ViewMode, FrontendFrameworkId, BackendFrameworkId, AppMode } from '../frameworks/types';
 
 interface EditorState {
   code: string;
@@ -19,10 +19,22 @@ interface PreviewState {
   terminalOutput: string;
 }
 
+interface FullStackState {
+  frontendFramework: FrontendFrameworkId;
+  backendFramework: BackendFrameworkId;
+  backendUrl: string;
+}
+
 interface AppState {
+  // App mode
+  appMode: AppMode;
+
   // Framework selection
   selectedFramework: FrameworkId;
   frameworkType: 'frontend' | 'backend';
+
+  // Full-stack mode state
+  fullstack: FullStackState;
 
   // View mode (simple/advanced for frontend)
   viewMode: ViewMode;
@@ -34,7 +46,10 @@ interface AppState {
   preview: PreviewState;
 
   // Actions
+  setAppMode: (mode: AppMode) => void;
   setFramework: (id: FrameworkId, type: 'frontend' | 'backend') => void;
+  setFullStackFrameworks: (frontend: FrontendFrameworkId, backend: BackendFrameworkId) => void;
+  setBackendUrl: (url: string) => void;
   setViewMode: (mode: ViewMode) => void;
   setCode: (code: string) => void;
   setHtmlContent: (html: string) => void;
@@ -60,15 +75,30 @@ const initialPreviewState: PreviewState = {
   terminalOutput: '',
 };
 
+const initialFullStackState: FullStackState = {
+  frontendFramework: 'react',
+  backendFramework: 'express',
+  backendUrl: '',
+};
+
 export const useAppStore = create<AppState>((set) => ({
   // Initial state
+  appMode: 'frontend',
   selectedFramework: 'vanilla',
   frameworkType: 'frontend',
   viewMode: 'simple',
+  fullstack: initialFullStackState,
   editor: initialEditorState,
   preview: initialPreviewState,
 
   // Actions
+  setAppMode: (mode) =>
+    set({
+      appMode: mode,
+      // Reset preview when switching app modes
+      preview: initialPreviewState,
+    }),
+
   setFramework: (id, type) =>
     set({
       selectedFramework: id,
@@ -76,6 +106,25 @@ export const useAppStore = create<AppState>((set) => ({
       // Reset preview when switching frameworks
       preview: initialPreviewState,
     }),
+
+  setFullStackFrameworks: (frontend, backend) =>
+    set((state) => ({
+      fullstack: {
+        ...state.fullstack,
+        frontendFramework: frontend,
+        backendFramework: backend,
+      },
+      // Reset preview when changing frameworks
+      preview: initialPreviewState,
+    })),
+
+  setBackendUrl: (url) =>
+    set((state) => ({
+      fullstack: {
+        ...state.fullstack,
+        backendUrl: url,
+      },
+    })),
 
   setViewMode: (mode) =>
     set({

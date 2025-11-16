@@ -1,10 +1,17 @@
-import { Code, FileCode, Layers } from "lucide-react";
+import { Code, FileCode, Layers, ArrowRight, Server } from "lucide-react";
 import dynamic from "next/dynamic";
 import { FrameworkSelector } from "./FrameworkSelector";
 import { FileExplorer } from "./FileExplorer";
 import { Button } from "@/components/ui/button";
-import { type Framework } from "@/components/FrameworkIcon";
-import { type BackendFrameworkId } from "@/src/frameworks/types";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { type Framework, FrameworkIcon } from "@/components/FrameworkIcon";
+import { type BackendFrameworkId, type FrontendFrameworkId, type AppMode } from "@/src/frameworks/types";
 
 // Type alias for compatibility
 type BackendFramework = BackendFrameworkId;
@@ -105,6 +112,11 @@ export function EditorPanel({
   backendFiles,
   selectedBackendFile,
   onBackendFileSelect,
+  appMode,
+  fullstackFrontendFramework,
+  fullstackBackendFramework,
+  onFullstackFrontendChange,
+  onFullstackBackendChange,
 }: {
   mode: "frontend" | "backend";
   selectedFramework: Framework;
@@ -123,6 +135,11 @@ export function EditorPanel({
   backendFiles: Record<string, string>;
   selectedBackendFile: string;
   onBackendFileSelect: (filename: string) => void;
+  appMode?: AppMode;
+  fullstackFrontendFramework?: FrontendFrameworkId;
+  fullstackBackendFramework?: BackendFrameworkId;
+  onFullstackFrontendChange?: (framework: FrontendFrameworkId) => void;
+  onFullstackBackendChange?: (framework: BackendFrameworkId) => void;
 }) {
   // Always show file explorer (backend mode or any frontend mode)
   const showFileExplorer = mode === "backend" || mode === "frontend";
@@ -185,7 +202,51 @@ export function EditorPanel({
 
         {/* Framework Selector */}
         <div className="flex-shrink-0">
-        {mode === "frontend" ? (
+        {appMode === "fullstack" ? (
+          <div className="flex items-center gap-2">
+            {/* Frontend Framework Dropdown */}
+            <Select
+              value={fullstackFrontendFramework || 'react'}
+              onValueChange={(value) => onFullstackFrontendChange?.(value as FrontendFrameworkId)}
+            >
+              <SelectTrigger size="sm" className="w-[130px] h-7 bg-zinc-800 border-zinc-700 text-zinc-300">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {frontendFrameworks.map((fw) => (
+                  <SelectItem key={fw.value} value={fw.value}>
+                    <span className="flex items-center gap-2">
+                      <FrameworkIcon framework={fw.value as Framework} />
+                      {fw.label}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <ArrowRight className="w-3 h-3 text-zinc-500" />
+
+            {/* Backend Framework Dropdown */}
+            <Select
+              value={fullstackBackendFramework || 'express'}
+              onValueChange={(value) => onFullstackBackendChange?.(value as BackendFrameworkId)}
+            >
+              <SelectTrigger size="sm" className="w-[130px] h-7 bg-zinc-800 border-zinc-700 text-zinc-300">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {backendFrameworks.map((fw) => (
+                  <SelectItem key={fw.value} value={fw.value}>
+                    <span className="flex items-center gap-2">
+                      <Server className="w-4 h-4" style={{ color: fw.color }} />
+                      {fw.label}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        ) : mode === "frontend" ? (
           <FrameworkSelector
             mode="frontend"
             frameworks={frontendFrameworks}

@@ -7,12 +7,19 @@ describe('App Store', () => {
     // Reset store to initial state before each test
     const store = useAppStore.getState()
     store.resetEditor()
+    store.setAppMode('frontend')
     store.setFramework('vanilla', 'frontend')
     store.setViewMode('simple')
     store.clearTerminalOutput()
   })
 
   describe('Initial State', () => {
+    it('should start in frontend app mode', () => {
+      const { appMode } = useAppStore.getState()
+
+      expect(appMode).toBe('frontend')
+    })
+
     it('should have correct initial framework selection', () => {
       const { selectedFramework, frameworkType } = useAppStore.getState()
 
@@ -24,6 +31,14 @@ describe('App Store', () => {
       const { viewMode } = useAppStore.getState()
 
       expect(viewMode).toBe('simple')
+    })
+
+    it('should have initial fullstack state', () => {
+      const { fullstack } = useAppStore.getState()
+
+      expect(fullstack.frontendFramework).toBe('react')
+      expect(fullstack.backendFramework).toBe('express')
+      expect(fullstack.backendUrl).toBe('')
     })
 
     it('should have empty editor state initially', () => {
@@ -576,6 +591,153 @@ hello();
     })
   })
 
+  describe('Full-Stack State Actions', () => {
+    describe('setAppMode', () => {
+      it('should update app mode to backend', () => {
+        const { setAppMode } = useAppStore.getState()
+
+        setAppMode('backend')
+
+        const { appMode } = useAppStore.getState()
+        expect(appMode).toBe('backend')
+      })
+
+      it('should update app mode to fullstack', () => {
+        const { setAppMode } = useAppStore.getState()
+
+        setAppMode('fullstack')
+
+        const { appMode } = useAppStore.getState()
+        expect(appMode).toBe('fullstack')
+      })
+
+      it('should reset preview when switching app modes', () => {
+        const { setAppMode, setPreviewOutput, setPreviewUrl } = useAppStore.getState()
+
+        setPreviewOutput('<div>Test</div>')
+        setPreviewUrl('http://localhost:3000')
+
+        setAppMode('backend')
+
+        const { preview } = useAppStore.getState()
+        expect(preview.output).toBe('')
+        expect(preview.url).toBe('')
+        expect(preview.isLoading).toBe(false)
+      })
+
+      it('should preserve editor state when switching app modes', () => {
+        const { setAppMode, setCode } = useAppStore.getState()
+
+        setCode('console.log("test")')
+
+        setAppMode('fullstack')
+
+        const { editor } = useAppStore.getState()
+        expect(editor.code).toBe('console.log("test")')
+      })
+    })
+
+    describe('setFullStackFrameworks', () => {
+      it('should update both frontend and backend frameworks', () => {
+        const { setFullStackFrameworks } = useAppStore.getState()
+
+        setFullStackFrameworks('vue', 'fastify')
+
+        const { fullstack } = useAppStore.getState()
+        expect(fullstack.frontendFramework).toBe('vue')
+        expect(fullstack.backendFramework).toBe('fastify')
+      })
+
+      it('should preserve backend URL when changing frameworks', () => {
+        const { setFullStackFrameworks, setBackendUrl } = useAppStore.getState()
+
+        setBackendUrl('http://localhost:3001')
+        setFullStackFrameworks('svelte', 'nextjs')
+
+        const { fullstack } = useAppStore.getState()
+        expect(fullstack.backendUrl).toBe('http://localhost:3001')
+        expect(fullstack.frontendFramework).toBe('svelte')
+        expect(fullstack.backendFramework).toBe('nextjs')
+      })
+
+      it('should reset preview when changing frameworks', () => {
+        const { setFullStackFrameworks, setPreviewOutput } = useAppStore.getState()
+
+        setPreviewOutput('<div>Old</div>')
+        setFullStackFrameworks('angular', 'sveltekit')
+
+        const { preview } = useAppStore.getState()
+        expect(preview.output).toBe('')
+      })
+
+      it('should handle all frontend framework combinations', () => {
+        const { setFullStackFrameworks } = useAppStore.getState()
+        const frontendFrameworks = ['vanilla', 'react', 'vue', 'svelte', 'angular'] as const
+
+        frontendFrameworks.forEach(fw => {
+          setFullStackFrameworks(fw, 'express')
+          const { fullstack } = useAppStore.getState()
+          expect(fullstack.frontendFramework).toBe(fw)
+          expect(fullstack.backendFramework).toBe('express')
+        })
+      })
+
+      it('should handle all backend framework combinations', () => {
+        const { setFullStackFrameworks } = useAppStore.getState()
+        const backendFrameworks = ['express', 'fastify', 'nextjs', 'sveltekit'] as const
+
+        backendFrameworks.forEach(fw => {
+          setFullStackFrameworks('react', fw)
+          const { fullstack } = useAppStore.getState()
+          expect(fullstack.frontendFramework).toBe('react')
+          expect(fullstack.backendFramework).toBe(fw)
+        })
+      })
+    })
+
+    describe('setBackendUrl', () => {
+      it('should update backend URL', () => {
+        const { setBackendUrl } = useAppStore.getState()
+
+        setBackendUrl('http://localhost:3001')
+
+        const { fullstack } = useAppStore.getState()
+        expect(fullstack.backendUrl).toBe('http://localhost:3001')
+      })
+
+      it('should preserve framework selections when updating URL', () => {
+        const { setBackendUrl, setFullStackFrameworks } = useAppStore.getState()
+
+        setFullStackFrameworks('vue', 'fastify')
+        setBackendUrl('http://localhost:4000')
+
+        const { fullstack } = useAppStore.getState()
+        expect(fullstack.backendUrl).toBe('http://localhost:4000')
+        expect(fullstack.frontendFramework).toBe('vue')
+        expect(fullstack.backendFramework).toBe('fastify')
+      })
+
+      it('should handle empty URL', () => {
+        const { setBackendUrl } = useAppStore.getState()
+
+        setBackendUrl('http://localhost:3001')
+        setBackendUrl('')
+
+        const { fullstack } = useAppStore.getState()
+        expect(fullstack.backendUrl).toBe('')
+      })
+
+      it('should handle URL with custom port', () => {
+        const { setBackendUrl } = useAppStore.getState()
+
+        setBackendUrl('http://localhost:8080')
+
+        const { fullstack } = useAppStore.getState()
+        expect(fullstack.backendUrl).toBe('http://localhost:8080')
+      })
+    })
+  })
+
   describe('Complex State Interactions', () => {
     it('should handle rapid state updates', () => {
       const { setCode, setHtmlContent, setCssContent } = useAppStore.getState()
@@ -629,6 +791,40 @@ hello();
       expect(useAppStore.getState().selectedFramework).toBe('vue')
       expect(useAppStore.getState().editor.code).toBe('const App = () => <div>React</div>;')
       expect(useAppStore.getState().preview.output).toBe('')
+    })
+
+    it('should handle fullstack mode workflow', () => {
+      const store = useAppStore.getState()
+
+      // Switch to fullstack mode
+      store.setAppMode('fullstack')
+      store.setFullStackFrameworks('react', 'express')
+      store.setBackendUrl('http://localhost:3001')
+      store.setCode('const App = () => <div>Fullstack</div>;')
+
+      const state = useAppStore.getState()
+      expect(state.appMode).toBe('fullstack')
+      expect(state.fullstack.frontendFramework).toBe('react')
+      expect(state.fullstack.backendFramework).toBe('express')
+      expect(state.fullstack.backendUrl).toBe('http://localhost:3001')
+      expect(state.editor.code).toBe('const App = () => <div>Fullstack</div>;')
+    })
+
+    it('should preserve fullstack state when switching to other modes', () => {
+      const store = useAppStore.getState()
+
+      store.setAppMode('fullstack')
+      store.setFullStackFrameworks('vue', 'fastify')
+      store.setBackendUrl('http://localhost:4000')
+
+      // Switch to frontend mode
+      store.setAppMode('frontend')
+
+      // Fullstack state should be preserved
+      const { fullstack } = useAppStore.getState()
+      expect(fullstack.frontendFramework).toBe('vue')
+      expect(fullstack.backendFramework).toBe('fastify')
+      expect(fullstack.backendUrl).toBe('http://localhost:4000')
     })
   })
 })

@@ -1,6 +1,13 @@
 import { RefObject } from "react";
 import dynamic from "next/dynamic";
-import { Play, RotateCw, Server, Terminal as TerminalIcon, Loader2 } from "lucide-react";
+import {
+  Play,
+  RotateCw,
+  Server,
+  Terminal as TerminalIcon,
+  Loader2,
+  Layers,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BrowserChrome } from "./BrowserChrome";
 import {
@@ -9,6 +16,7 @@ import {
   ResizableHandle,
 } from "@/components/ui/resizable";
 import { type Framework } from "@/components/FrameworkIcon";
+import { type AppMode } from "@/src/frameworks/types";
 
 const Terminal = dynamic(
   () =>
@@ -65,8 +73,10 @@ export function PreviewPanel({
   onRefresh,
   iframeRef,
   serverUrl,
+  appMode,
+  backendUrl,
 }: {
-  mode: "frontend" | "backend";
+  mode: "frontend" | "backend" | "fullstack";
   selectedFramework: Framework;
   error: string;
   isRunning: boolean;
@@ -75,10 +85,14 @@ export function PreviewPanel({
   onRefresh: () => void;
   iframeRef: RefObject<HTMLIFrameElement | null>;
   serverUrl: string;
+  appMode?: AppMode;
+  backendUrl?: string;
 }) {
   const previewUrl =
     mode === "frontend"
       ? `https://localhost:3000/preview/${selectedFramework}`
+      : mode === "fullstack"
+      ? backendUrl || `http://localhost:3001 (waiting...)`
       : serverUrl || `http://localhost:3001 (waiting...)`;
 
   return (
@@ -88,15 +102,21 @@ export function PreviewPanel({
         <div className="flex items-center gap-2">
           {mode === "frontend" ? (
             <Play className="w-4 h-4 text-zinc-400" />
+          ) : mode === "fullstack" ? (
+            <Layers className="w-4 h-4 text-purple-400" />
           ) : (
-            <Play className="w-4 h-4 text-zinc-400" />
+            <Server className="w-4 h-4 text-green-400" />
           )}
           <h2 className="text-sm font-semibold text-zinc-300">
-            {mode === "frontend" ? "Live Preview" : "Live Preview"}
+            {mode === "frontend"
+              ? "Live Preview"
+              : mode === "fullstack"
+              ? "Full-Stack Preview - still in development"
+              : "Live Preview"}
           </h2>
         </div>
 
-        {/* Auto-run Toggle (Frontend) or Run Server Button (Backend) */}
+        {/* Auto-run Toggle (Frontend) or Run Server Button (Backend/Fullstack) */}
         {mode === "frontend" ? (
           <Button
             onClick={onToggleAutoRun}
@@ -108,9 +128,7 @@ export function PreviewPanel({
                 : "text-zinc-400 hover:text-zinc-300 hover:bg-zinc-800"
             }`}
           >
-            <RotateCw
-              className={`w-3 h-3 ${autoRun ? "animate-spin" : ""}`}
-            />
+            <RotateCw className={`w-3 h-3 ${autoRun ? "animate-spin" : ""}`} />
             <span className="ml-1.5 text-xs">
               {autoRun ? "Auto-run ON" : "Auto-run OFF"}
             </span>
@@ -121,14 +139,20 @@ export function PreviewPanel({
             variant="default"
             size="sm"
             disabled={isRunning}
-            className="h-7 px-2 bg-green-600 hover:bg-green-700"
+            className={`h-7 px-2 ${
+              mode === "fullstack"
+                ? "bg-purple-600 hover:bg-purple-700"
+                : "bg-green-600 hover:bg-green-700"
+            }`}
           >
             {isRunning ? (
               <Loader2 className="w-3 h-3 animate-spin" />
             ) : (
               <Play className="w-3 h-3" />
             )}
-            <span className="ml-1.5 text-xs">Run Server</span>
+            <span className="ml-1.5 text-xs">
+              {mode === "fullstack" ? "Run Full-Stack" : "Run Server"}
+            </span>
           </Button>
         )}
       </div>
@@ -160,6 +184,59 @@ export function PreviewPanel({
             className="w-full h-full border-0"
           />
         </div>
+      ) : mode === "fullstack" ? (
+        <ResizablePanelGroup direction="vertical" className="flex-1">
+          {/* Frontend Preview Section */}
+          <ResizablePanel defaultSize={60} minSize={30}>
+            <div className="h-full bg-white relative">
+              {error && (
+                <div className="absolute top-0 left-0 right-0 bg-red-50 border-b border-red-200 px-4 py-3 z-10">
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600 font-semibold text-sm">
+                      Error:
+                    </span>
+                    <span className="text-red-800 text-sm">{error}</span>
+                  </div>
+                </div>
+              )}
+              <iframe
+                ref={iframeRef}
+                title="fullstack-preview"
+                sandbox="allow-scripts allow-modals allow-forms allow-pointer-lock allow-popups allow-same-origin"
+                className="w-full h-full border-0"
+              />
+            </div>
+          </ResizablePanel>
+
+          <ResizableHandle withHandle />
+
+          {/* Backend Terminal Section */}
+          <ResizablePanel defaultSize={40} minSize={20}>
+            <div className="h-full bg-[#1e1e1e] flex flex-col">
+              {/* Terminal Header */}
+              <div className="flex items-center justify-between px-3 py-1.5 bg-[#2d2d30] border-b border-[#3e3e42]">
+                <div className="flex items-center gap-2">
+                  <TerminalIcon className="w-3.5 h-3.5 text-zinc-400" />
+                  <span className="text-xs font-medium text-zinc-300">
+                    Backend Terminal
+                  </span>
+                  {backendUrl && (
+                    <span className="text-xs text-green-400">{backendUrl}</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded-full bg-zinc-600 hover:bg-zinc-500 cursor-pointer" />
+                  <div className="w-3 h-3 rounded-full bg-zinc-600 hover:bg-zinc-500 cursor-pointer" />
+                  <div className="w-3 h-3 rounded-full bg-zinc-600 hover:bg-zinc-500 cursor-pointer" />
+                </div>
+              </div>
+              {/* Terminal Content */}
+              <div className="flex-1 overflow-hidden">
+                <Terminal className="w-full h-full" />
+              </div>
+            </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
       ) : (
         <ResizablePanelGroup direction="vertical" className="flex-1">
           {/* Server Preview Section */}

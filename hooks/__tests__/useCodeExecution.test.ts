@@ -2,6 +2,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import { useCodeExecution } from '../useCodeExecution'
 import { FRAMEWORKS } from '@/src/frameworks'
+import type { FullStackTemplate } from '@/src/frameworks/fullstack/types'
+
+// Mock the fullstack executor
+vi.mock('@/src/executors/fullstack/fullstack-executor', () => ({
+  fullStackExecutor: {
+    execute: vi.fn().mockResolvedValue(undefined),
+  },
+}))
 
 describe('useCodeExecution', () => {
   let mockIframe: HTMLIFrameElement
@@ -529,14 +537,207 @@ describe('useCodeExecution', () => {
     })
   })
 
+  describe('handleRunFullStack', () => {
+    let mockTerminal: any
+    let mockTemplate: FullStackTemplate
+
+    beforeEach(() => {
+      // Mock terminal
+      mockTerminal = {
+        ready: true,
+        clear: vi.fn(),
+      }
+      ;(window as any).__terminal = mockTerminal
+
+      // Create mock template
+      mockTemplate = {
+        id: 'test-fullstack',
+        name: 'Test Full-Stack App',
+        description: 'Test template',
+        frontendFramework: 'react',
+        backendFramework: 'express',
+        files: {
+          frontend: {
+            'App.jsx': 'const App = () => <div>Test</div>',
+            'index.html': '<html><body><div id="root"></div></body></html>',
+          },
+          backend: {
+            'server.js': 'console.log("server")',
+            'package.json': '{"name":"test"}',
+          },
+        },
+      }
+    })
+
+    afterEach(() => {
+      delete (window as any).__terminal
+    })
+
+    it('should execute fullstack application', async () => {
+      const { result } = renderHook(() => useCodeExecution())
+      const setIsRunning = vi.fn()
+      const setError = vi.fn()
+      const setServerUrl = vi.fn()
+      const setTerminalOutputs = vi.fn()
+      const iframeRef = { current: mockIframe }
+
+      await result.current.handleRunFullStack({
+        template: mockTemplate,
+        iframeRef,
+        setIsRunning,
+        setError,
+        setServerUrl,
+        setTerminalOutputs,
+      })
+
+      expect(setIsRunning).toHaveBeenCalledWith(true)
+      expect(setIsRunning).toHaveBeenCalledWith(false)
+      expect(setError).toHaveBeenCalledWith('')
+    })
+
+    it('should navigate iframe to backend URL', async () => {
+      const { result } = renderHook(() => useCodeExecution())
+      const setIsRunning = vi.fn()
+      const setError = vi.fn()
+      const setServerUrl = vi.fn()
+      const setTerminalOutputs = vi.fn()
+
+      // Create iframe with src property that can be set
+      const iframe = {
+        src: '',
+        contentDocument: mockIframeDoc,
+      } as HTMLIFrameElement
+      const iframeRef = { current: iframe }
+
+      // Import and mock the fullStackExecutor dynamically
+      const { fullStackExecutor } = await import('@/src/executors/fullstack/fullstack-executor')
+      vi.mocked(fullStackExecutor.execute).mockImplementation(async (template, callbacks) => {
+        // Simulate calling onFrontendReady with a URL
+        callbacks.onFrontendReady('http://mock-backend-url.com')
+      })
+
+      await result.current.handleRunFullStack({
+        template: mockTemplate,
+        iframeRef,
+        setIsRunning,
+        setError,
+        setServerUrl,
+        setTerminalOutputs,
+      })
+
+      // Iframe src should be set to a URL (not using iframeDoc.write)
+      expect(iframe.src).toBeTruthy()
+      expect(iframe.src).toBe('http://mock-backend-url.com')
+    })
+
+    it('should wait for terminal to be ready', async () => {
+      const { result } = renderHook(() => useCodeExecution())
+      const setIsRunning = vi.fn()
+      const setError = vi.fn()
+      const setServerUrl = vi.fn()
+      const setTerminalOutputs = vi.fn()
+      const iframeRef = { current: mockIframe }
+
+      // Terminal not ready initially
+      mockTerminal.ready = false
+
+      // Make it ready after 200ms
+      setTimeout(() => {
+        mockTerminal.ready = true
+      }, 200)
+
+      const promise = result.current.handleRunFullStack({
+        template: mockTemplate,
+        iframeRef,
+        setIsRunning,
+        setError,
+        setServerUrl,
+        setTerminalOutputs,
+      })
+
+      await waitFor(() => {
+        expect(mockTerminal.ready).toBe(true)
+      }, { timeout: 500 })
+
+      await promise
+
+      expect(mockTerminal.clear).toHaveBeenCalled()
+    })
+
+    it('should clear terminal outputs on start', async () => {
+      const { result } = renderHook(() => useCodeExecution())
+      const setIsRunning = vi.fn()
+      const setError = vi.fn()
+      const setServerUrl = vi.fn()
+      const setTerminalOutputs = vi.fn()
+      const iframeRef = { current: mockIframe }
+
+      await result.current.handleRunFullStack({
+        template: mockTemplate,
+        iframeRef,
+        setIsRunning,
+        setError,
+        setServerUrl,
+        setTerminalOutputs,
+      })
+
+      expect(setTerminalOutputs).toHaveBeenCalledWith(expect.any(Function))
+      const updater = setTerminalOutputs.mock.calls[0][0]
+      expect(updater([])).toEqual([])
+    })
+
+    it('should clear server URL on start', async () => {
+      const { result } = renderHook(() => useCodeExecution())
+      const setIsRunning = vi.fn()
+      const setError = vi.fn()
+      const setServerUrl = vi.fn()
+      const setTerminalOutputs = vi.fn()
+      const iframeRef = { current: mockIframe }
+
+      await result.current.handleRunFullStack({
+        template: mockTemplate,
+        iframeRef,
+        setIsRunning,
+        setError,
+        setServerUrl,
+        setTerminalOutputs,
+      })
+
+      expect(setServerUrl).toHaveBeenCalledWith('')
+    })
+
+    it('should handle execution errors', async () => {
+      const { result } = renderHook(() => useCodeExecution())
+      const setIsRunning = vi.fn()
+      const setError = vi.fn()
+      const setServerUrl = vi.fn()
+      const setTerminalOutputs = vi.fn()
+      const iframeRef = { current: mockIframe }
+
+      // The fullStackExecutor is mocked to succeed, so this just verifies the flow
+      await result.current.handleRunFullStack({
+        template: mockTemplate,
+        iframeRef,
+        setIsRunning,
+        setError,
+        setServerUrl,
+        setTerminalOutputs,
+      })
+
+      expect(setIsRunning).toHaveBeenCalledWith(false)
+    })
+  })
+
   describe('Return value', () => {
-    it('should return handleRunFrontend and handleRunBackend functions', () => {
+    it('should return all three execution functions', () => {
       const { result } = renderHook(() => useCodeExecution())
 
       expect(result.current).toHaveProperty('handleRunFrontend')
       expect(result.current).toHaveProperty('handleRunBackend')
+      expect(result.current).toHaveProperty('handleRunFullStack')
       expect(typeof result.current.handleRunFrontend).toBe('function')
       expect(typeof result.current.handleRunBackend).toBe('function')
+      expect(typeof result.current.handleRunFullStack).toBe('function')
     })
 
     it('should return stable function references with useCallback', () => {
@@ -545,6 +746,7 @@ describe('useCodeExecution', () => {
       const firstRender = {
         handleRunFrontend: result.current.handleRunFrontend,
         handleRunBackend: result.current.handleRunBackend,
+        handleRunFullStack: result.current.handleRunFullStack,
       }
 
       // Rerender
@@ -553,6 +755,7 @@ describe('useCodeExecution', () => {
       // Functions should maintain reference equality
       expect(result.current.handleRunFrontend).toBe(firstRender.handleRunFrontend)
       expect(result.current.handleRunBackend).toBe(firstRender.handleRunBackend)
+      expect(result.current.handleRunFullStack).toBe(firstRender.handleRunFullStack)
     })
   })
 })

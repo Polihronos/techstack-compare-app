@@ -28,6 +28,12 @@ describe('Header', () => {
       expect(screen.getByText('Backend')).toBeInTheDocument()
     })
 
+    it('should render full-stack button', () => {
+      render(<Header mode="frontend" onModeChange={vi.fn()} />)
+
+      expect(screen.getByText('Full-Stack')).toBeInTheDocument()
+    })
+
     it('should render docs button', () => {
       render(<Header mode="frontend" onModeChange={vi.fn()} />)
 
@@ -65,6 +71,36 @@ describe('Header', () => {
       const frontendButton = screen.getByText('Frontend').closest('button')
       expect(frontendButton).toHaveClass('text-zinc-400')
     })
+
+    it('should not highlight fullstack button when in backend mode', () => {
+      render(<Header mode="backend" onModeChange={vi.fn()} />)
+
+      const fullstackButton = screen.getByText('Full-Stack').closest('button')
+      expect(fullstackButton).toHaveClass('text-zinc-400')
+    })
+  })
+
+  describe('Full-Stack Mode', () => {
+    it('should highlight fullstack button when in fullstack mode', () => {
+      render(<Header mode="fullstack" onModeChange={vi.fn()} />)
+
+      const fullstackButton = screen.getByText('Full-Stack').closest('button')
+      expect(fullstackButton).toHaveClass('bg-purple-600')
+    })
+
+    it('should not highlight frontend button when in fullstack mode', () => {
+      render(<Header mode="fullstack" onModeChange={vi.fn()} />)
+
+      const frontendButton = screen.getByText('Frontend').closest('button')
+      expect(frontendButton).toHaveClass('text-zinc-400')
+    })
+
+    it('should not highlight backend button when in fullstack mode', () => {
+      render(<Header mode="fullstack" onModeChange={vi.fn()} />)
+
+      const backendButton = screen.getByText('Backend').closest('button')
+      expect(backendButton).toHaveClass('text-zinc-400')
+    })
   })
 
   describe('Mode Switching', () => {
@@ -84,9 +120,33 @@ describe('Header', () => {
       expect(onModeChange).toHaveBeenCalledWith('backend')
     })
 
+    it('should call onModeChange with fullstack when fullstack clicked', () => {
+      const onModeChange = vi.fn()
+      render(<Header mode="frontend" onModeChange={onModeChange} />)
+
+      fireEvent.click(screen.getByText('Full-Stack'))
+      expect(onModeChange).toHaveBeenCalledWith('fullstack')
+    })
+
     it('should allow clicking already selected mode', () => {
       const onModeChange = vi.fn()
       render(<Header mode="frontend" onModeChange={onModeChange} />)
+
+      fireEvent.click(screen.getByText('Frontend'))
+      expect(onModeChange).toHaveBeenCalledWith('frontend')
+    })
+
+    it('should switch from backend to fullstack', () => {
+      const onModeChange = vi.fn()
+      render(<Header mode="backend" onModeChange={onModeChange} />)
+
+      fireEvent.click(screen.getByText('Full-Stack'))
+      expect(onModeChange).toHaveBeenCalledWith('fullstack')
+    })
+
+    it('should switch from fullstack to frontend', () => {
+      const onModeChange = vi.fn()
+      render(<Header mode="fullstack" onModeChange={onModeChange} />)
 
       fireEvent.click(screen.getByText('Frontend'))
       expect(onModeChange).toHaveBeenCalledWith('frontend')
@@ -129,6 +189,14 @@ describe('Header', () => {
       expect(icon).toBeInTheDocument()
     })
 
+    it('should render layers icon in fullstack button', () => {
+      render(<Header mode="frontend" onModeChange={vi.fn()} />)
+
+      const fullstackButton = screen.getByText('Full-Stack').closest('button')
+      const icon = fullstackButton?.querySelector('svg')
+      expect(icon).toBeInTheDocument()
+    })
+
     it('should render book icon in docs button', () => {
       render(<Header mode="frontend" onModeChange={vi.fn()} />)
 
@@ -159,6 +227,13 @@ describe('Header', () => {
 
       const button = screen.getByText('Backend').closest('button')
       expect(button).toHaveClass('bg-green-600', 'hover:bg-green-700')
+    })
+
+    it('should apply purple color to fullstack when selected', () => {
+      render(<Header mode="fullstack" onModeChange={vi.fn()} />)
+
+      const button = screen.getByText('Full-Stack').closest('button')
+      expect(button).toHaveClass('bg-purple-600', 'hover:bg-purple-700')
     })
   })
 })

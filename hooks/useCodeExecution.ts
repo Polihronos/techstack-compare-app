@@ -1,7 +1,9 @@
 import { useCallback, RefObject } from "react";
 import { FRAMEWORKS } from "@/src/frameworks";
 import { webContainerExecutor } from "@/src/executors/backend/webcontainer-executor";
+import { fullStackExecutor } from "@/src/executors/fullstack/fullstack-executor";
 import type { FrontendFrameworkId, BackendFrameworkId } from "@/src/frameworks/types";
+import type { FullStackTemplate } from "@/src/frameworks/fullstack/types";
 
 // Terminal output type
 export interface TerminalOutput {
@@ -141,8 +143,84 @@ export function useCodeExecution() {
     []
   );
 
+  /**
+   * Execute full-stack application (backend + frontend)
+   */
+  const handleRunFullStack = useCallback(
+    async ({
+      template,
+      iframeRef,
+      setIsRunning,
+      setError,
+      setServerUrl,
+      setTerminalOutputs,
+    }: {
+      template: FullStackTemplate;
+      iframeRef: RefObject<HTMLIFrameElement | null>;
+      setIsRunning: (running: boolean) => void;
+      setError: (error: string) => void;
+      setServerUrl: (url: string) => void;
+      setTerminalOutputs: (
+        updater: (prev: TerminalOutput[]) => TerminalOutput[]
+      ) => void;
+    }) => {
+      setIsRunning(true);
+      setError("");
+      setTerminalOutputs(() => []);
+      setServerUrl("");
+
+      // Wait for terminal to be ready
+      const waitForTerminal = () => {
+        return new Promise<void>((resolve) => {
+          const checkTerminal = () => {
+            const terminal = (window as any).__terminal;
+            if (terminal?.ready) {
+              terminal.clear();
+              resolve();
+            } else {
+              setTimeout(checkTerminal, 100);
+            }
+          };
+          checkTerminal();
+        });
+      };
+
+      await waitForTerminal();
+
+      try {
+        // Execute full-stack application
+        await fullStackExecutor.execute(template, {
+          onBackendOutput: (output) => {
+            setTerminalOutputs((prev) => [...prev, { type: 'stdout', data: output }]);
+          },
+          onBackendReady: (url) => {
+            setServerUrl(url);
+          },
+          onFrontendReady: (url) => {
+            // Navigate iframe to backend URL (frontend is served from same origin)
+            if (iframeRef.current) {
+              iframeRef.current.src = url;
+            }
+          },
+          onError: (error) => {
+            setError(error);
+          },
+        });
+      } catch (err) {
+        const errorMsg =
+          err instanceof Error ? err.message : "Full-stack execution failed";
+        setError(errorMsg);
+        console.error("Full-stack execution error:", err);
+      } finally {
+        setIsRunning(false);
+      }
+    },
+    []
+  );
+
   return {
     handleRunFrontend,
     handleRunBackend,
+    handleRunFullStack,
   };
 }

@@ -9,29 +9,35 @@ import { useCodeExecution } from "@/hooks/useCodeExecution";
 import { useAppStore } from "@/src/stores/app-store";
 import { FRAMEWORKS, getFrontendFrameworks, getBackendFrameworks } from "@/src/frameworks";
 import type { FrameworkId, FrontendFrameworkId, BackendFrameworkId } from "@/src/frameworks/types";
+import { reactExpressTodo } from "@/src/frameworks/fullstack/react-express-todo";
 import {
   ResizablePanelGroup,
   ResizablePanel,
   ResizableHandle,
 } from "@/components/ui/resizable";
-import { Server } from "lucide-react";
+import { Server, Layers } from "lucide-react";
 
 export default function Home() {
-  const { handleRunFrontend, handleRunBackend } = useCodeExecution();
+  const { handleRunFrontend, handleRunBackend, handleRunFullStack } = useCodeExecution();
 
   // Zustand store
   const {
+    appMode,
     selectedFramework,
     frameworkType,
     viewMode,
     editor,
     preview,
+    fullstack,
+    setAppMode,
     setFramework,
+    setFullStackFrameworks,
     setViewMode,
     setCode,
     setHtmlContent,
     setCssContent,
     setPreviewUrl,
+    setBackendUrl,
     appendTerminalOutput,
     clearTerminalOutput,
     setPreviewLoading,
@@ -49,6 +55,30 @@ export default function Home() {
 
   // Load templates when framework or view mode changes
   useEffect(() => {
+    if (appMode === 'fullstack') {
+      // Load fullstack template files
+      const fullstackFiles: Record<string, string> = {};
+
+      // Add frontend files with prefix
+      for (const [path, content] of Object.entries(reactExpressTodo.files.frontend)) {
+        fullstackFiles[`frontend/${path}`] = content;
+      }
+
+      // Add backend files with prefix
+      for (const [path, content] of Object.entries(reactExpressTodo.files.backend)) {
+        fullstackFiles[`backend/${path}`] = content;
+      }
+
+      setFiles(fullstackFiles);
+      setSelectedFile('frontend/App.jsx');
+      setCode(fullstackFiles['frontend/App.jsx'] || '');
+      clearTerminalOutput();
+      setPreviewUrl('');
+      setBackendUrl('');
+      setTerminalOutputs([]);
+      return;
+    }
+
     if (!currentFramework) return;
 
     if (frameworkType === 'frontend') {
@@ -88,7 +118,7 @@ export default function Home() {
       setPreviewUrl('');
       setTerminalOutputs([]);
     }
-  }, [selectedFramework, frameworkType, viewMode, currentFramework]);
+  }, [appMode, selectedFramework, frameworkType, viewMode, currentFramework]);
 
   // Local state for terminal outputs
   const [terminalOutputs, setTerminalOutputs] = useState<any[]>([]);
@@ -96,14 +126,14 @@ export default function Home() {
   // Write terminal outputs to XTerm.js
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (frameworkType === "backend" && terminalOutputs.length > 0) {
+    if ((frameworkType === "backend" || appMode === "fullstack") && terminalOutputs.length > 0) {
       const terminal = (window as any).__terminal;
       if (terminal) {
         const latestOutput = terminalOutputs[terminalOutputs.length - 1];
         terminal.write(latestOutput.data);
       }
     }
-  }, [terminalOutputs, frameworkType]);
+  }, [terminalOutputs, frameworkType, appMode]);
 
   // Auto-run effect for frontend
   useEffect(() => {
@@ -133,7 +163,20 @@ export default function Home() {
 
   // Handle refresh/run
   const handleRefresh = () => {
-    if (frameworkType === 'frontend') {
+    if (appMode === 'fullstack') {
+      // Run full-stack application
+      handleRunFullStack({
+        template: reactExpressTodo, // TODO: Get template based on selected frameworks
+        iframeRef,
+        setIsRunning: setPreviewLoading,
+        setError,
+        setServerUrl: (url) => {
+          setPreviewUrl(url);
+          setBackendUrl(url);
+        },
+        setTerminalOutputs: setTerminalOutputs,
+      });
+    } else if (frameworkType === 'frontend') {
       const mainFile = selectedFramework === 'svelte' ? 'App.svelte' :
                       selectedFramework === 'angular' ? 'counter.component.ts' :
                       'script.js';
@@ -196,11 +239,19 @@ export default function Home() {
     <div className="flex flex-col h-screen bg-zinc-950">
       {/* Header */}
       <Header
-        mode={frameworkType}
+        mode={appMode}
         onModeChange={(mode) => {
-          // Switch to first framework of that type
-          const firstFramework = mode === 'frontend' ? 'vanilla' : 'express';
-          setFramework(firstFramework, mode);
+          setAppMode(mode);
+
+          // Switch to appropriate framework based on mode
+          if (mode === 'frontend') {
+            setFramework('vanilla', 'frontend');
+          } else if (mode === 'backend') {
+            setFramework('express', 'backend');
+          } else if (mode === 'fullstack') {
+            // Set default fullstack frameworks
+            setFullStackFrameworks('react', 'express');
+          }
         }}
       />
 
@@ -209,11 +260,23 @@ export default function Home() {
         {/* Editor Panel */}
         <ResizablePanel defaultSize={50} minSize={30}>
           <EditorPanel
-            mode={frameworkType}
-            selectedFramework={frameworkType === 'frontend' ? selectedFramework as FrontendFrameworkId : 'vanilla'}
-            onFrameworkChange={(fw) => handleFrameworkChange(fw)}
-            selectedBackendFramework={frameworkType === 'backend' ? selectedFramework as BackendFrameworkId : 'express'}
-            onBackendFrameworkChange={(fw) => handleFrameworkChange(fw)}
+            mode={appMode === 'fullstack' ? 'frontend' : frameworkType}
+            selectedFramework={appMode === 'frontend' ? selectedFramework as FrontendFrameworkId : appMode === 'fullstack' ? fullstack.frontendFramework : 'vanilla'}
+            onFrameworkChange={(fw) => {
+              if (appMode === 'fullstack') {
+                setFullStackFrameworks(fw, fullstack.backendFramework);
+              } else {
+                handleFrameworkChange(fw);
+              }
+            }}
+            selectedBackendFramework={appMode === 'backend' ? selectedFramework as BackendFrameworkId : appMode === 'fullstack' ? fullstack.backendFramework : 'express'}
+            onBackendFrameworkChange={(fw) => {
+              if (appMode === 'fullstack') {
+                setFullStackFrameworks(fullstack.frontendFramework, fw);
+              } else {
+                handleFrameworkChange(fw);
+              }
+            }}
             code={files[selectedFile] || ''}
             onCodeChange={handleCodeChange}
             frontendFrameworks={frontendFrameworks}
@@ -232,6 +295,12 @@ export default function Home() {
               setSelectedFile(file);
               setCode(files[file] || '');
             }}
+            // Full-stack specific props
+            appMode={appMode}
+            fullstackFrontendFramework={fullstack.frontendFramework}
+            fullstackBackendFramework={fullstack.backendFramework}
+            onFullstackFrontendChange={(fw) => setFullStackFrameworks(fw, fullstack.backendFramework)}
+            onFullstackBackendChange={(fw) => setFullStackFrameworks(fullstack.frontendFramework, fw)}
           />
         </ResizablePanel>
 
@@ -240,8 +309,8 @@ export default function Home() {
         {/* Preview Panel */}
         <ResizablePanel defaultSize={50} minSize={30}>
           <PreviewPanel
-            mode={frameworkType}
-            selectedFramework={frameworkType === 'frontend' ? selectedFramework as FrontendFrameworkId : 'vanilla'}
+            mode={appMode === 'fullstack' ? 'fullstack' : frameworkType}
+            selectedFramework={appMode === 'frontend' ? selectedFramework as FrontendFrameworkId : appMode === 'fullstack' ? fullstack.frontendFramework : 'vanilla'}
             error={error}
             isRunning={preview.isLoading}
             autoRun={autoRun}
@@ -249,6 +318,8 @@ export default function Home() {
             onRefresh={handleRefresh}
             iframeRef={iframeRef}
             serverUrl={preview.url}
+            appMode={appMode}
+            backendUrl={fullstack.backendUrl}
           />
         </ResizablePanel>
       </ResizablePanelGroup>
@@ -256,29 +327,40 @@ export default function Home() {
       {/* Status Bar */}
       <footer className="px-6 py-2 bg-zinc-900 border-t border-zinc-800 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          {frameworkType === "frontend" ? (
+          {appMode === "frontend" ? (
             <>
               <FrameworkIcon framework={selectedFramework as FrontendFrameworkId} />
               <span className="text-sm text-zinc-400">
                 {currentFramework?.name}
               </span>
             </>
-          ) : (
+          ) : appMode === "backend" ? (
             <>
               <Server className="w-4 h-4 text-green-500" />
               <span className="text-sm text-zinc-400">
                 {currentFramework?.name}
               </span>
             </>
+          ) : (
+            <>
+              <Layers className="w-4 h-4 text-purple-500" />
+              <span className="text-sm text-zinc-400">
+                {FRAMEWORKS[fullstack.frontendFramework]?.name} + {FRAMEWORKS[fullstack.backendFramework]?.name}
+              </span>
+            </>
           )}
         </div>
         <span className="text-xs text-zinc-500">
-          {frameworkType === "frontend"
+          {appMode === "frontend"
             ? autoRun
               ? "Auto-run enabled"
               : "Manual mode"
-            : preview.url
-            ? "Server running"
+            : appMode === "backend"
+            ? preview.url
+              ? "Server running"
+              : "Ready to start"
+            : fullstack.backendUrl
+            ? "Full-stack app running"
             : "Ready to start"}
         </span>
       </footer>

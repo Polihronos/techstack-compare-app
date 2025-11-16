@@ -3,6 +3,7 @@
  */
 
 export type FrameworkType = 'frontend' | 'backend';
+export type AppMode = 'frontend' | 'backend' | 'fullstack';
 
 export type FrontendFrameworkId = 'vanilla' | 'react' | 'vue' | 'svelte' | 'angular';
 export type BackendFrameworkId = 'express' | 'fastify' | 'nextjs' | 'sveltekit';
